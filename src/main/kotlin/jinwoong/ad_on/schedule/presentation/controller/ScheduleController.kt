@@ -1,0 +1,43 @@
+package jinwoong.ad_on.schedule.presentation.controller
+
+import jinwoong.ad_on.common.dto.ApiResponse
+import jinwoong.ad_on.schedule.application.service.ScheduleService
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
+import jinwoong.ad_on.schedule.presentation.dto.response.AdServeResponse
+import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleSaveResponse
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+import java.time.LocalDate
+import java.time.LocalTime
+
+@RestController
+@RequestMapping("/schedules")
+class ScheduleController (
+   private val scheduleService: ScheduleService
+)
+{
+    @PostMapping
+    fun createSchedules(@RequestBody request: ScheduleSaveRequest): ResponseEntity<ApiResponse<ScheduleSaveResponse>> {
+        val response = scheduleService.createSchedules(request = request)
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            ApiResponse.success(data = response)
+        )
+    }
+
+    @GetMapping("/serve-ad")
+    fun getServingAd(): ResponseEntity<ApiResponse<AdServeResponse>> {
+        val today = LocalDate.now()
+        val currentTime = LocalTime.now()
+
+        val servingAd = scheduleService.getServingAd(today, currentTime)
+        val id = servingAd?.id
+        val response = AdServeResponse(scheduleId = id)
+
+        return ResponseEntity.ok(
+            ApiResponse.success(data = response)
+        )
+    }
+
+}
