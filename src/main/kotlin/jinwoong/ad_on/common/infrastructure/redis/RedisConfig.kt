@@ -1,5 +1,6 @@
 package jinwoong.ad_on.common.infrastructure.redis
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -13,7 +14,9 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer
 
 @Configuration
-class RedisConfig {
+class RedisConfig (
+    private val objectMapper: ObjectMapper // ✅ Boot이 관리하는 mapper 주입
+) {
 
     @Value("\${spring.data.redis.host}")
     lateinit var redisHost: String
@@ -40,7 +43,7 @@ class RedisConfig {
         val redisTemplate = RedisTemplate<String, Schedule>()
         redisTemplate.connectionFactory = connectionFactory
         redisTemplate.keySerializer = StringRedisSerializer()
-        redisTemplate.valueSerializer = GenericJackson2JsonRedisSerializer()
+        redisTemplate.valueSerializer = GenericJackson2JsonRedisSerializer(objectMapper)
         return redisTemplate
     }
 }
