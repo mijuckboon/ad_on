@@ -6,6 +6,7 @@ import jinwoong.ad_on.schedule.domain.aggregate.Status
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleSaveResponse
+import jinwoong.ad_on.schedule.presentation.dto.response.ServingAdDTO
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.scheduling.annotation.Scheduled
@@ -107,7 +108,7 @@ class ScheduleService(
      * 서빙할 광고 선택
      * Redis 조회 -> DB 조회 (fallback)
      */
-    fun getServingAd(today: LocalDate, currentTime: LocalTime): Schedule? {
+    fun getServingAd(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
         val candidates = getCandidatesFromRedis()
         val servingAd = getServingAdFromRedis(candidates)
         if (servingAd != null) return servingAd
@@ -116,21 +117,27 @@ class ScheduleService(
         return getServingAdFromDB(today, currentTime)
     }
 
-    fun getServingAdFromRedis(candidates: List<Schedule>): Schedule? {
+    fun getServingAdFromRedis(candidates: List<Schedule>): ServingAdDTO? {
         if (candidates.isEmpty()) return null
 
         val servingAd = candidates.random()
         updateBudgetAfterServe(servingAd)
-        return servingAd
+        val servingAdDTO = ServingAdDTO.from(servingAd)
+        return servingAdDTO
     }
 
-    fun getServingAdFromDB(today: LocalDate, currentTime: LocalTime): Schedule? {
+    fun getServingAdFromDB(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
         val fallbackCandidates = getCandidatesFromDB(today)
         val filteredCandidates = filterCandidates(fallbackCandidates, currentTime)
 
-        val servingAd = filteredCandidates.randomOrNull()
+        if (filteredCandidates.isEmpty()) {
+            return null
+        }
+
+        val servingAd = filteredCandidates.random()
         updateBudgetAfterServe(servingAd)
-        return servingAd
+        val servingAdDTO = ServingAdDTO.from(servingAd)
+        return servingAdDTO
     }
 
     /**

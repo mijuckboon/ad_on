@@ -31,9 +31,8 @@ class ScheduleController (
         val today = LocalDate.now()
         val currentTime = LocalTime.now()
 
-        val servingAd = scheduleService.getServingAd(today, currentTime)
-        val id = servingAd?.id
-        val response = AdServeResponse(scheduleId = id)
+        val servingAdDTO = scheduleService.getServingAd(today, currentTime)
+        val response = AdServeResponse(servingAd = servingAdDTO)
 
         return ResponseEntity.ok(
             ApiResponse.success(data = response)
