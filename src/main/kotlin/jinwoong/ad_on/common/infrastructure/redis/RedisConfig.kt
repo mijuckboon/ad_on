@@ -40,10 +40,17 @@ class RedisConfig (
 
     @Bean
     fun scheduleRedisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, Schedule> {
+        val typedObjectMapper = objectMapper.copy() // Boot에서 주입된 ObjectMapper 그대로 복사
+            .activateDefaultTyping( // ✅ 타입 정보 추가
+                com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY
+            )
+
         val redisTemplate = RedisTemplate<String, Schedule>()
         redisTemplate.connectionFactory = connectionFactory
         redisTemplate.keySerializer = StringRedisSerializer()
-        redisTemplate.valueSerializer = GenericJackson2JsonRedisSerializer(objectMapper)
+        redisTemplate.valueSerializer = GenericJackson2JsonRedisSerializer(typedObjectMapper) // ✅ 타입 정보 포함된 ObjectMapper
         return redisTemplate
     }
 }
