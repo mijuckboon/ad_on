@@ -3,6 +3,7 @@ package jinwoong.ad_on.schedule.infrastructure.jpa
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
@@ -17,4 +18,11 @@ interface JpaScheduleRepository: ScheduleRepository, JpaRepository<Schedule, Lon
             AND s.creativeStatus = 'ON'
             """)
     override fun findCandidates(today: LocalDate): List<Schedule>
+
+    @Modifying
+    @Query("""UPDATE Schedule s
+        SET s.spentDailyBudget = 0
+    """)
+    override fun resetSpentDailyBudgets()
+
 }

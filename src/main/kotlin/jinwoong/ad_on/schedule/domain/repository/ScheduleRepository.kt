@@ -7,4 +7,6 @@ interface ScheduleRepository {
     fun save(schedule: Schedule): Schedule
 
     fun findCandidates(today: LocalDate): List<Schedule>
+
+    fun resetSpentDailyBudgets()
 }

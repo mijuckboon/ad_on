@@ -26,6 +26,7 @@ class ScheduleService(
     companion object {
         private val log = LoggerFactory.getLogger(ScheduleService::class.java)
         const val CACHE_INTERVAL_IN_MILISEC = 5 * 60 * 1000L // 5분
+        const val CRON_EXPRESSION_FOR_MIDNIGHT = "0 0 0 * * *"
     }
 
     /**
@@ -185,4 +186,22 @@ class ScheduleService(
         cacheCandidates()
     }
 
+    @Scheduled(cron = CRON_EXPRESSION_FOR_MIDNIGHT)
+    @Transactional
+    fun resetSpentDailyBudgets() {
+        // 1. DB 값 초기화
+        scheduleRepository.resetSpentDailyBudgets()
+        log.info("일 소진액 초기화 완료 (DB)")
+
+        // 2. Redis 값 초기화
+        val keys = redisTemplate.keys("candidate:schedule:*")
+        keys.forEach { key ->
+            val schedule = redisTemplate.opsForValue().get(key)
+            if (schedule != null) {
+                schedule.spentDailyBudget = 0L
+                redisTemplate.opsForValue().set(key, schedule)
+            }
+        }
+        log.info("일 소진액 초기화 완료 (Redis)")
+    }
 }
