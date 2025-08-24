@@ -189,11 +189,16 @@ class ScheduleService(
     @Scheduled(cron = CRON_EXPRESSION_FOR_MIDNIGHT)
     @Transactional
     fun resetSpentDailyBudgets() {
-        // 1. DB 값 초기화
+        resetSpentDailyBudgetsInDB()
+        resetSpentDailyBudgetsInRedis()
+    }
+
+    fun resetSpentDailyBudgetsInDB() {
         scheduleRepository.resetSpentDailyBudgets()
         log.info("일 소진액 초기화 완료 (DB)")
+    }
 
-        // 2. Redis 값 초기화
+    fun resetSpentDailyBudgetsInRedis() {
         val keys = redisTemplate.keys("candidate:schedule:*")
         keys.forEach { key ->
             val schedule = redisTemplate.opsForValue().get(key)
