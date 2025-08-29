@@ -1,4 +1,4 @@
-package jinwoong.ad_on.common.infrastructure.redis
+package jinwoong.ad_on.infrastructure.redis
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule

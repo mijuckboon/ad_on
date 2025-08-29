@@ -1,4 +1,4 @@
-package jinwoong.ad_on.common.dto
+package jinwoong.ad_on.dto
 
 import java.time.LocalDateTime
 
