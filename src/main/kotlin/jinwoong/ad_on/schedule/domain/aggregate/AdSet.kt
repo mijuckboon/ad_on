@@ -1,8 +1,10 @@
 package jinwoong.ad_on.schedule.domain.aggregate
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.LocalDate
 import java.time.LocalTime
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 data class AdSet(
     var adSetId: Long,
     var adSetStartDate: LocalDate,

@@ -1,7 +1,9 @@
 package jinwoong.ad_on.schedule.domain.aggregate
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.LocalTime
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 class Schedule(
     var id: Long? = null,
     var campaign: Campaign,

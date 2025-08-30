@@ -1,5 +1,8 @@
 package jinwoong.ad_on.schedule.domain.aggregate
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 data class Look(
     var creativeImage: String? = null,
     var creativeMovie: String? = null,
