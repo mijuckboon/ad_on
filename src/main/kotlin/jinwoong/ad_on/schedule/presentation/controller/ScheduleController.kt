@@ -1,6 +1,7 @@
 package jinwoong.ad_on.schedule.presentation.controller
 
-import jinwoong.ad_on.common.dto.ApiResponse
+import jinwoong.ad_on.api.ApiResponse
+import jinwoong.ad_on.schedule.application.service.AdServeService
 import jinwoong.ad_on.schedule.application.service.ScheduleService
 import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
 import jinwoong.ad_on.schedule.presentation.dto.response.AdServeResponse
@@ -13,17 +14,16 @@ import java.time.LocalTime
 
 @RestController
 @RequestMapping("/schedules")
-class ScheduleController (
-   private val scheduleService: ScheduleService
-)
-{
+class ScheduleController(
+    private val scheduleService: ScheduleService,
+    private val adServeService: AdServeService,
+) {
     @PostMapping
     fun createSchedules(@RequestBody request: ScheduleSaveRequest): ResponseEntity<ApiResponse<ScheduleSaveResponse>> {
         val response = scheduleService.createSchedules(request = request)
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-            ApiResponse.success(data = response)
-        )
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success(data = response))
     }
 
     @GetMapping("/serve-ad")
@@ -31,7 +31,7 @@ class ScheduleController (
         val today = LocalDate.now()
         val currentTime = LocalTime.now()
 
-        val servingAdDTO = scheduleService.getServingAd(today, currentTime)
+        val servingAdDTO = adServeService.getServingAd(today, currentTime)
         val response = AdServeResponse(servingAd = servingAdDTO)
 
         return ResponseEntity.ok(

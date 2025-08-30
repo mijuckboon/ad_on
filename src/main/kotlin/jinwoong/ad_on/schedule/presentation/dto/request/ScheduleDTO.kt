@@ -4,13 +4,17 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 data class ScheduleDTO(
+    val campaignId: Long,
+    val adSetId: Long,
     val creativeId: Long,
     val adSetStartDate: LocalDate,
     val adSetEndDate: LocalDate,
     val adSetStartTime: LocalTime,
     val adSetEndTime: LocalTime,
     val totalBudget: Long,
+    val spentTotalBudget: Long? = null,
     val dailyBudget: Long,
+    val spentDailyBudget: Long? = null,
     val paymentType: String,
     val unitCost: Long,
     val creativeImage: String? = null,

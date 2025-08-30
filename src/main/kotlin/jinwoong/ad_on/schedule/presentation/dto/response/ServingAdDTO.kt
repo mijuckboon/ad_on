@@ -15,12 +15,12 @@ data class ServingAdDTO(
         fun from(schedule: Schedule): ServingAdDTO {
             return ServingAdDTO(
                 scheduleId = schedule.id!!,
-                creativeImage = schedule.creativeImage,
-                creativeMovie = schedule.creativeMovie,
-                creativeLogo = schedule.creativeLogo,
-                copyrightingTitle = schedule.copyrightingTitle,
-                copyrightingSubtitle = schedule.copyrightingSubtitle,
-                landingUrl = schedule.landingUrl
+                creativeImage = schedule.creative.look.creativeImage,
+                creativeMovie = schedule.creative.look.creativeMovie,
+                creativeLogo = schedule.creative.look.creativeLogo,
+                copyrightingTitle = schedule.creative.look.copyrightingTitle,
+                copyrightingSubtitle = schedule.creative.look.copyrightingSubtitle,
+                landingUrl = schedule.creative.landingUrl
             )
         }
     }
