@@ -14,7 +14,6 @@ class AdServeService(
     private val scheduleSyncService: ScheduleSyncService,
     private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
     private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
-    private val scheduleService: ScheduleService,
 ) {
     private val updatedSchedules: MutableList<Schedule> = mutableListOf()
 
@@ -44,7 +43,7 @@ class AdServeService(
     }
 
     fun getServingAdFromDB(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
-        val fallbackCandidates = scheduleService.getCandidatesFromDB(today)
+        val fallbackCandidates = scheduleSyncService.getCandidatesFromDB(today)
         val filteredCandidates = scheduleSyncService.filterCandidates(fallbackCandidates, currentTime)
 
         if (filteredCandidates.isEmpty()) {
@@ -71,14 +70,14 @@ class AdServeService(
 
         // Redis 캐시 업데이트
         val candidateKey = "candidate:schedule:${scheduleId}"
-        val spentBudgetKey = "budget:schedule:${scheduleId}"
+        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
+
+        val spentBudgetKey = "spentBudgets:schedule:${scheduleId}"
         val spentBudgets = SpentBudgets(
             scheduleId = scheduleId,
             spentTotalBudget = schedule.campaign.spentTotalBudget,
             spentDailyBudget = schedule.adSet.spentDailyBudget,
         )
-
-        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
         spentBudgetsRedisTemplate.opsForValue().set(spentBudgetKey, spentBudgets)
 
         // 플랫폼 발송용 리스트 추가

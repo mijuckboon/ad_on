@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDate
 
 @Service
 class ScheduleService(
@@ -73,22 +72,17 @@ class ScheduleService(
             savedIds.add(savedSchedule.id!!)
 
             /* Redis에 예산 정보 저장 */
-            val budgetKey = "budget:schedule:${savedSchedule.id}"
+            val spentBudgetsKey = "spentBudgets:schedule:${savedSchedule.id}"
             val initialBudget = SpentBudgets(
                 scheduleId = savedSchedule.id!!,
                 spentTotalBudget = spentTotalBudget,
                 spentDailyBudget = spentDailyBudget
             )
-            spentBudgetsRedisTemplate.opsForValue().set(budgetKey, initialBudget)
+            spentBudgetsRedisTemplate.opsForValue().set(spentBudgetsKey, initialBudget)
         }
 
         log.info("스케줄 생성 완료, count: ${savedIds.size}")
         return ScheduleSaveResponse(savedIds)
-    }
-
-    fun getCandidatesFromDB(today: LocalDate): List<Schedule> {
-        /* DB 조회: 비교적 실시간성이 낮은 값을 미리 필터링 */
-        return scheduleRepository.findCandidates(today)
     }
 
 }
