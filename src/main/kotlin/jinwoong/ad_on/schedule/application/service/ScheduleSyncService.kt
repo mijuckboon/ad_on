@@ -1,6 +1,5 @@
 package jinwoong.ad_on.schedule.application.service
 
-import jinwoong.ad_on.exception.BusinessException
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
 import org.slf4j.LoggerFactory
