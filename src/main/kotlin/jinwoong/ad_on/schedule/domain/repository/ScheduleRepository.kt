@@ -8,5 +8,13 @@ import java.time.LocalDate
 interface ScheduleRepository {
     fun save(schedule: Schedule): Schedule
 
+    fun update(schedule: Schedule): Schedule
+
     fun findCandidates(today: LocalDate): List<Schedule>
+
+    fun findAllByCampaignId(campaignId: Long): List<Schedule>
+
+    fun findAllByAdSetId(adSetId: Long): List<Schedule>
+
+    fun findAllByCreativeId(creativeId: Long): List<Schedule>
 }

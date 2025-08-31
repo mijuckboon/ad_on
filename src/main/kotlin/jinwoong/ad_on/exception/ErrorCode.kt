@@ -7,6 +7,8 @@ enum class ErrorCode(val code: String, val message: String, val httpStatus: Http
     CAMPAIGN_NOT_FOUND("00001", "캠페인을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     AD_SET_NOT_FOUND("00002", "광고 세트를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     CREATIVE_NOT_FOUND("00003", "소재를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+
+    SCHEDULES_NOT_FOUND("01000", "잘못된 요청입니다.", HttpStatus.BAD_REQUEST),
     ;
 
     fun formatMessage(vararg args: Any?): String =

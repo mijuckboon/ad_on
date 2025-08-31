@@ -1,6 +1,9 @@
 package jinwoong.ad_on.schedule.domain.aggregate
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import jinwoong.ad_on.schedule.presentation.dto.request.AdSetDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.CampaignDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.CreativeDTO
 import java.time.LocalTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
@@ -32,6 +35,32 @@ class Schedule(
 
     fun isActiveByTime(currentTime: LocalTime): Boolean {
         return currentTime in adSet.adSetStartTime..adSet.adSetEndTime
+    }
+
+    /* update */
+    fun updateCampaign(campaignDTO: CampaignDTO) {
+        campaign.totalBudget = campaignDTO.totalBudget ?: campaign.totalBudget
+    }
+
+    fun updateAdSet(adSetDTO: AdSetDTO) {
+        adSet.adSetStartDate = adSetDTO.adSetStartDate ?: adSet.adSetStartDate
+        adSet.adSetStartTime = adSetDTO.adSetStartTime ?: adSet.adSetStartTime
+        adSet.adSetEndDate = adSetDTO.adSetEndDate ?: adSet.adSetEndDate
+        adSet.adSetEndTime = adSetDTO.adSetEndTime ?: adSet.adSetEndTime
+        adSet.adSetStatus = adSetDTO.adSetStatus ?: adSet.adSetStatus
+        adSet.paymentType = adSetDTO.paymentType ?: adSet.paymentType
+        adSet.dailyBudget = adSetDTO.dailyBudget ?: adSet.dailyBudget
+        adSet.unitCost = adSetDTO.unitCost ?: adSet.unitCost
+    }
+
+    fun updateCreative(creativeDTO: CreativeDTO) {
+        creative.landingUrl = creativeDTO.landingUrl ?: creative.landingUrl
+        creative.creativeStatus = creativeDTO.creativeStatus ?: creative.creativeStatus
+        creative.look.creativeImage = creativeDTO.creativeImage
+        creative.look.creativeMovie = creativeDTO.creativeMovie
+        creative.look.creativeLogo = creativeDTO.creativeLogo
+        creative.look.copyrightingTitle = creativeDTO.copyrightingTitle
+        creative.look.copyrightingSubtitle = creativeDTO.copyrightingSubtitle
     }
 
 }

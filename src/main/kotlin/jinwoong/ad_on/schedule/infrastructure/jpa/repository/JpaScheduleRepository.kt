@@ -20,4 +20,28 @@ interface JpaScheduleRepository: JpaRepository<ScheduleEntity, Long> {
     )
     fun findCandidates(today: LocalDate): List<ScheduleEntity>
 
+    @Query(
+        """
+    SELECT s FROM ScheduleEntity s
+    WHERE s.campaign.campaignId = :campaignId
+"""
+    )
+    fun findAllByCampaignId(campaignId: Long): List<ScheduleEntity>
+
+    @Query(
+        """
+    SELECT s FROM ScheduleEntity s
+    WHERE s.adSet.adSetId = :adSetId
+"""
+    )
+    fun findAllByAdSetId(adSetId: Long): List<ScheduleEntity>
+
+    @Query(
+        """
+    SELECT s FROM ScheduleEntity s
+    WHERE s.creative.creativeId = :creativeId
+"""
+    )
+    fun findAllByCreativeId(creativeId: Long): List<ScheduleEntity>
+
 }

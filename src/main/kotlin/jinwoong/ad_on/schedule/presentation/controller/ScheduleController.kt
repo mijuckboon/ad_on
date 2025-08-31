@@ -4,8 +4,10 @@ import jinwoong.ad_on.api.ApiResponse
 import jinwoong.ad_on.schedule.application.service.AdServeService
 import jinwoong.ad_on.schedule.application.service.ScheduleService
 import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleUpdateRequest
 import jinwoong.ad_on.schedule.presentation.dto.response.AdServeResponse
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleSaveResponse
+import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleUpdateResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -20,7 +22,7 @@ class ScheduleController(
 ) {
     @PostMapping
     fun createSchedules(@RequestBody scheduleSaveRequest: ScheduleSaveRequest): ResponseEntity<ApiResponse<ScheduleSaveResponse>> {
-        val response = scheduleService.createSchedules(request = scheduleSaveRequest)
+        val response = scheduleService.createSchedules(scheduleSaveRequest = scheduleSaveRequest)
 
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success(data = response))
@@ -33,6 +35,15 @@ class ScheduleController(
 
         val servingAdDTO = adServeService.getServingAd(today, currentTime)
         val response = AdServeResponse(servingAd = servingAdDTO)
+
+        return ResponseEntity.ok(
+            ApiResponse.success(data = response)
+        )
+    }
+
+    @PutMapping
+    fun updateSchedules(@RequestBody scheduleUpdateRequest: ScheduleUpdateRequest): ResponseEntity<ApiResponse<ScheduleUpdateResponse>> {
+        val response = scheduleService.updateSchedules(scheduleUpdateRequest = scheduleUpdateRequest)
 
         return ResponseEntity.ok(
             ApiResponse.success(data = response)

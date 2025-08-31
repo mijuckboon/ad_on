@@ -1,6 +1,7 @@
 package jinwoong.ad_on.schedule.application.service
 
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule
+import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
 import jinwoong.ad_on.schedule.presentation.dto.response.ServingAdDTO
 import org.slf4j.LoggerFactory
@@ -14,9 +15,8 @@ class AdServeService(
     private val scheduleSyncService: ScheduleSyncService,
     private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
     private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
+    private val scheduleRepository: ScheduleRepository,
 ) {
-    private val updatedSchedules: MutableList<Schedule> = mutableListOf()
-
     companion object {
         private val log = LoggerFactory.getLogger(AdServeService::class.java)
     }
@@ -63,27 +63,47 @@ class AdServeService(
         if (schedule == null) return
         if (!schedule.hasToPay()) return
 
-        val scheduleId = schedule.id!!
+        val schedulesByCampaign = updateCampaignBudgets(schedule)
+        val schedulesByAdSet = updateAdSetBudgets(schedule)
 
-        schedule.campaign.spentTotalBudget += schedule.adSet.unitCost
-        schedule.adSet.spentDailyBudget += schedule.adSet.unitCost
+        // Redis 캐시 동기화 (모든 관련 Schedule)
+        val allSchedulesToSync = (schedulesByCampaign + schedulesByAdSet).distinctBy { it.id }
+        syncSchedulesToRedis(allSchedulesToSync)
 
-        // Redis 캐시 업데이트
-        val candidateKey = "candidate:schedule:${scheduleId}"
-        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
-
-        val spentBudgetKey = "spentBudgets:schedule:${scheduleId}"
-        val spentBudgets = SpentBudgets(
-            scheduleId = scheduleId,
-            spentTotalBudget = schedule.campaign.spentTotalBudget,
-            spentDailyBudget = schedule.adSet.spentDailyBudget,
-        )
-        spentBudgetsRedisTemplate.opsForValue().set(spentBudgetKey, spentBudgets)
-
-        // 플랫폼 발송용 리스트 추가
-        if (!updatedSchedules.contains(schedule)) updatedSchedules.add(schedule)
-
+        /* 플랫폼 서버로 이력 발송 */
+        sendHistoryToPlatform(schedule)
         log.info("광고 ${schedule.id} 소진액 수정: total=${schedule.campaign.spentTotalBudget}, daily=${schedule.adSet.spentDailyBudget}")
+    }
+
+    private fun updateCampaignBudgets(schedule: Schedule): List<Schedule> {
+        val schedulesByCampaign = scheduleRepository.findAllByCampaignId(schedule.campaign.campaignId)
+        schedulesByCampaign.forEach { it.campaign.spentTotalBudget += it.adSet.unitCost }
+        return schedulesByCampaign
+    }
+
+    private fun updateAdSetBudgets(schedule: Schedule): List<Schedule> {
+        val schedulesByAdSet = scheduleRepository.findAllByAdSetId(schedule.adSet.adSetId)
+        schedulesByAdSet.forEach { it.adSet.spentDailyBudget += it.adSet.unitCost }
+        return schedulesByAdSet
+    }
+
+    private fun syncSchedulesToRedis(schedules: List<Schedule>) {
+        schedules.forEach { scheduleToSync ->
+            val candidateKey = "candidate:schedule:${scheduleToSync.id}"
+            scheduleRedisTemplate.opsForValue().set(candidateKey, scheduleToSync)
+
+            val spentBudgetKey = "spentBudgets:schedule:${scheduleToSync.id}"
+            val spentBudgets = SpentBudgets(
+                scheduleId = scheduleToSync.id!!,
+                spentTotalBudget = scheduleToSync.campaign.spentTotalBudget,
+                spentDailyBudget = scheduleToSync.adSet.spentDailyBudget
+            )
+            spentBudgetsRedisTemplate.opsForValue().set(spentBudgetKey, spentBudgets)
+        }
+    }
+
+    private fun sendHistoryToPlatform(schedule: Schedule) {
+
     }
 
 
