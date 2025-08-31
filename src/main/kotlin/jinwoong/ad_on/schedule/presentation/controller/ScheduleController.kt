@@ -19,8 +19,8 @@ class ScheduleController(
     private val adServeService: AdServeService,
 ) {
     @PostMapping
-    fun createSchedules(@RequestBody request: ScheduleSaveRequest): ResponseEntity<ApiResponse<ScheduleSaveResponse>> {
-        val response = scheduleService.createSchedules(request = request)
+    fun createSchedules(@RequestBody scheduleSaveRequest: ScheduleSaveRequest): ResponseEntity<ApiResponse<ScheduleSaveResponse>> {
+        val response = scheduleService.createSchedules(request = scheduleSaveRequest)
 
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success(data = response))
