@@ -3,15 +3,24 @@ package jinwoong.ad_on.schedule.infrastructure.mapper
 import jinwoong.ad_on.schedule.domain.aggregate.*
 import jinwoong.ad_on.schedule.infrastructure.jpa.entity.*
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.stereotype.Service
 
-class ScheduleMapper {
-    companion object {
-        fun toDomain(entity: ScheduleEntity, spentBudgets: SpentBudgets? = null): Schedule = Schedule(
-            id = entity.id,
-            campaign = entity.campaign.toDomain(spentBudgets?.spentTotalBudget ?: 0L),
-            adSet = entity.adSet.toDomain(spentBudgets?.spentDailyBudget ?: 0L),
-            creative = entity.creative.toDomain(),
-        )
+@Service
+class ScheduleMapper(
+    private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
+) {
+     fun toDomain(entity: ScheduleEntity): Schedule {
+         val spentBudgets = spentBudgetsRedisTemplate.opsForValue()
+             .get("spentBudgets:schedule:${entity.id}")
+
+         return Schedule(
+             id = entity.id,
+             campaign = entity.campaign.toDomain(spentBudgets?.spentTotalBudget ?: 0L),
+             adSet = entity.adSet.toDomain(spentBudgets?.spentDailyBudget ?: 0L),
+             creative = entity.creative.toDomain(),
+         )
+     }
 
         fun toEntity(domain: Schedule): ScheduleEntity = ScheduleEntity(
             id = domain.id,
@@ -87,5 +96,4 @@ class ScheduleMapper {
             copyrightingTitle = this.copyrightingTitle,
             copyrightingSubtitle = this.copyrightingSubtitle
         )
-    }
 }

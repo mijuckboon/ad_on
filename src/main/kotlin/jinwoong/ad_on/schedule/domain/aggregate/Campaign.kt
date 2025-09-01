@@ -9,8 +9,16 @@ data class Campaign(
     var spentTotalBudget: Long,
 ) {
     init {
-        require(totalBudget > spentTotalBudget) {
-            ("총 예산은 사용한 소진액보다 커야합니다.")
+        require(totalBudget >= spentTotalBudget) {
+            ("총 예산은 사용한 소진액보다 작을 수 없습니다. spentTotal=$spentTotalBudget, total=$totalBudget")
         }
+    }
+
+    /* 예산 업데이트 */
+    fun updateTotalBudget(newTotalBudget: Long) {
+        require(newTotalBudget >= spentTotalBudget) {
+            "총 예산은 사용한 소진액보다 작을 수 없습니다. spentTotal=$spentTotalBudget, newTotal=$newTotalBudget"
+        }
+        totalBudget = newTotalBudget
     }
 }

@@ -18,8 +18,16 @@ data class AdSet(
     var spentDailyBudget: Long,
 ) {
     init {
-        require(dailyBudget > spentDailyBudget) {
-            ("일 예산은 오늘 사용한 소진액보다 커야합니다.")
+        require(dailyBudget >= spentDailyBudget) {
+            ("일 예산은 오늘 사용한 소진액보다 작을 수 없습니다. spentDaily=$spentDailyBudget, daily=$dailyBudget")
         }
+    }
+
+    /* 예산 업데이트 */
+    fun updateDailyBudget(newDailyBudget: Long) {
+        require(newDailyBudget >= spentDailyBudget) {
+            "일 예산은 사용한 소진액보다 작을 수 없습니다. spentDaily=$spentDailyBudget, newDaily=$newDailyBudget"
+        }
+        dailyBudget = newDailyBudget
     }
 }

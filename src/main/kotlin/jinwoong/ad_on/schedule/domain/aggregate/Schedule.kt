@@ -39,17 +39,22 @@ class Schedule(
 
     /* update */
     fun updateCampaign(campaignDTO: CampaignDTO) {
-        campaign.totalBudget = campaignDTO.totalBudget ?: campaign.totalBudget
+        campaignDTO.totalBudget?.let {
+            campaign.updateTotalBudget(it)
+        }
     }
 
     fun updateAdSet(adSetDTO: AdSetDTO) {
+        adSetDTO.dailyBudget?.let {
+            adSet.updateDailyBudget(it)
+        }
+
         adSet.adSetStartDate = adSetDTO.adSetStartDate ?: adSet.adSetStartDate
         adSet.adSetStartTime = adSetDTO.adSetStartTime ?: adSet.adSetStartTime
         adSet.adSetEndDate = adSetDTO.adSetEndDate ?: adSet.adSetEndDate
         adSet.adSetEndTime = adSetDTO.adSetEndTime ?: adSet.adSetEndTime
         adSet.adSetStatus = adSetDTO.adSetStatus ?: adSet.adSetStatus
         adSet.paymentType = adSetDTO.paymentType ?: adSet.paymentType
-        adSet.dailyBudget = adSetDTO.dailyBudget ?: adSet.dailyBudget
         adSet.unitCost = adSetDTO.unitCost ?: adSet.unitCost
     }
 
