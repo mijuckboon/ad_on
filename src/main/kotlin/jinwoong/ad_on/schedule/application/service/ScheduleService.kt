@@ -32,46 +32,7 @@ class ScheduleService(
         val savedIds = mutableListOf<Long>()
 
         scheduleSaveRequest.schedules.forEach { scheduleDTO ->
-            val spentTotalBudget = scheduleDTO.spentTotalBudget ?: 0L
-            val spentDailyBudget = scheduleDTO.spentDailyBudget ?: 0L
-
-            val campaign = Campaign(
-                campaignId = scheduleDTO.campaignId,
-                totalBudget = scheduleDTO.totalBudget,
-                spentTotalBudget = spentTotalBudget,
-            )
-
-            val adSet = AdSet(
-                adSetId = scheduleDTO.adSetId,
-                adSetStartDate = scheduleDTO.adSetStartDate,
-                adSetEndDate = scheduleDTO.adSetEndDate,
-                adSetStartTime = scheduleDTO.adSetStartTime,
-                adSetEndTime = scheduleDTO.adSetEndTime,
-                adSetStatus = Status.valueOf(scheduleDTO.adSetStatus),
-                dailyBudget = scheduleDTO.dailyBudget,
-                unitCost = scheduleDTO.unitCost,
-                paymentType = PaymentType.valueOf(scheduleDTO.paymentType),
-                spentDailyBudget = spentDailyBudget,
-            )
-
-            val creative = Creative(
-                creativeId = scheduleDTO.creativeId,
-                creativeStatus = Status.valueOf(scheduleDTO.creativeStatus),
-                landingUrl = scheduleDTO.landingUrl,
-                look = Look(
-                    creativeImage = scheduleDTO.creativeImage,
-                    creativeMovie = scheduleDTO.creativeMovie,
-                    creativeLogo = scheduleDTO.creativeLogo,
-                    copyrightingTitle = scheduleDTO.copyrightingTitle,
-                    copyrightingSubtitle = scheduleDTO.copyrightingSubtitle,
-                )
-            )
-
-            val schedule = Schedule(
-                campaign = campaign,
-                adSet = adSet,
-                creative = creative,
-            )
+            val schedule = buildSchedule(scheduleDTO)
 
             val savedSchedule = scheduleRepository.save(schedule)
             savedIds.add(savedSchedule.id!!)
@@ -80,8 +41,8 @@ class ScheduleService(
             val spentBudgetsKey = "spentBudgets:schedule:${savedSchedule.id}"
             val initialBudget = SpentBudgets(
                 scheduleId = savedSchedule.id!!,
-                spentTotalBudget = spentTotalBudget,
-                spentDailyBudget = spentDailyBudget
+                spentTotalBudget = scheduleDTO.spentTotalBudget ?: 0L,
+                spentDailyBudget = scheduleDTO.spentDailyBudget ?: 0L
             )
             spentBudgetsRedisTemplate.opsForValue().set(spentBudgetsKey, initialBudget)
         }
@@ -90,73 +51,111 @@ class ScheduleService(
         return ScheduleSaveResponse(savedIds)
     }
 
+    private fun buildSchedule(scheduleDTO: ScheduleDTO): Schedule {
+        val spentTotalBudget = scheduleDTO.spentTotalBudget ?: 0L
+        val spentDailyBudget = scheduleDTO.spentDailyBudget ?: 0L
+
+        val campaign = Campaign(
+            campaignId = scheduleDTO.campaignId,
+            totalBudget = scheduleDTO.totalBudget,
+            spentTotalBudget = spentTotalBudget
+        )
+
+        val adSet = AdSet(
+            adSetId = scheduleDTO.adSetId,
+            adSetStartDate = scheduleDTO.adSetStartDate,
+            adSetEndDate = scheduleDTO.adSetEndDate,
+            adSetStartTime = scheduleDTO.adSetStartTime,
+            adSetEndTime = scheduleDTO.adSetEndTime,
+            adSetStatus = Status.valueOf(scheduleDTO.adSetStatus),
+            dailyBudget = scheduleDTO.dailyBudget,
+            unitCost = scheduleDTO.unitCost,
+            paymentType = PaymentType.valueOf(scheduleDTO.paymentType),
+            spentDailyBudget = spentDailyBudget
+        )
+
+        val creative = Creative(
+            creativeId = scheduleDTO.creativeId,
+            creativeStatus = Status.valueOf(scheduleDTO.creativeStatus),
+            landingUrl = scheduleDTO.landingUrl,
+            look = Look(
+                creativeImage = scheduleDTO.creativeImage,
+                creativeMovie = scheduleDTO.creativeMovie,
+                creativeLogo = scheduleDTO.creativeLogo,
+                copyrightingTitle = scheduleDTO.copyrightingTitle,
+                copyrightingSubtitle = scheduleDTO.copyrightingSubtitle
+            )
+        )
+
+        return Schedule(campaign = campaign, adSet = adSet, creative = creative)
+    }
+
     @Transactional
     fun updateSchedules(scheduleUpdateRequest: ScheduleUpdateRequest): ScheduleUpdateResponse {
-        val updatedIds = mutableListOf<Long>()
         val candidateMap = scheduleSyncService.getCandidatesFromRedis().associateBy { it.id }
 
+        val schedulesToUpdate = mutableListOf<Schedule>()
+
         scheduleUpdateRequest.campaign?.let { campaignDTO ->
-            updatedIds += updateSchedulesByCampaign(campaignDTO, candidateMap)
+            schedulesToUpdate += updateSchedulesByCampaign(campaignDTO)
         }
         scheduleUpdateRequest.adSet?.let { adSetDTO ->
-            updatedIds += updateSchedulesByAdSet(adSetDTO, candidateMap)
+            schedulesToUpdate += updateSchedulesByAdSet(adSetDTO)
         }
         scheduleUpdateRequest.creative?.let { creativeDTO ->
-            updatedIds += updateSchedulesByCreative(creativeDTO, candidateMap)
+            schedulesToUpdate += updateSchedulesByCreative(creativeDTO)
         }
+
+        val schedulesToSync = schedulesToUpdate.filter {
+            candidateMap.containsKey(it.id)
+        }
+        val updatedIds = schedulesToUpdate.mapNotNull { it.id }
+
+        syncCandidatesInRedis(schedulesToSync)
 
         return ScheduleUpdateResponse(updatedIds = updatedIds.toList())
     }
 
     /* 업데이트 로직 */
-    private fun updateSchedulesByCampaign(campaignDTO: CampaignDTO, candidateMap: Map<Long?, Schedule>): Set<Long> {
+    private fun updateSchedulesByCampaign(campaignDTO: CampaignDTO): List<Schedule> {
         val schedules = scheduleRepository.findAllByCampaignId(campaignDTO.campaignId)
             .ifEmpty { throw BusinessException(ErrorCode.SCHEDULES_NOT_FOUND) }
 
-        return schedules.map { schedule ->
-            schedule.updateCampaign(campaignDTO)
-            saveScheduleAndSyncRedis(schedule, candidateMap)
-            schedule.id!!
-        }.toSet()
-    }
-
-    private fun updateSchedulesByAdSet(adSetDTO: AdSetDTO, candidateMap: Map<Long?, Schedule>): Set<Long> {
-        val schedules = scheduleRepository.findAllByAdSetId(adSetDTO.adSetId)
-            .ifEmpty { throw BusinessException(ErrorCode.SCHEDULES_NOT_FOUND) }
-
-        return schedules.map { schedule ->
-            schedule.updateAdSet(adSetDTO)
-            saveScheduleAndSyncRedis(schedule, candidateMap)
-            schedule.id!!
-        }.toSet()
-    }
-
-    private fun updateSchedulesByCreative(creativeDTO: CreativeDTO, candidateMap: Map<Long?, Schedule>): Set<Long> {
-        val schedules = scheduleRepository.findAllByCreativeId(creativeDTO.creativeId)
-            .ifEmpty { throw BusinessException(ErrorCode.SCHEDULES_NOT_FOUND) }
-
-        return schedules.map { schedule ->
-            schedule.updateCreative(creativeDTO)
-            saveScheduleAndSyncRedis(schedule, candidateMap)
-            schedule.id!!
-        }.toSet()
-    }
-
-    /* 저장 */
-    private fun saveScheduleAndSyncRedis(schedule: Schedule, candidateMap: Map<Long?, Schedule>) {
-        updateScheduleInDB(schedule)
-        if (schedule.id != null && candidateMap.containsKey(schedule.id)) {
-            syncRedis(schedule)
+        return schedules.map {
+            it.updateCampaign(campaignDTO)
+            scheduleRepository.update(it)
         }
     }
 
-    private fun updateScheduleInDB(schedule: Schedule) {
-        scheduleRepository.update(schedule)
+    private fun updateSchedulesByAdSet(adSetDTO: AdSetDTO): List<Schedule> {
+        val schedules = scheduleRepository.findAllByAdSetId(adSetDTO.adSetId)
+            .ifEmpty { throw BusinessException(ErrorCode.SCHEDULES_NOT_FOUND) }
+
+        return schedules.map {
+            it.updateAdSet(adSetDTO)
+            scheduleRepository.update(it)
+        }
     }
 
-    private fun syncRedis(schedule: Schedule) {
+    private fun updateSchedulesByCreative(creativeDTO: CreativeDTO): List<Schedule> {
+        val schedules = scheduleRepository.findAllByCreativeId(creativeDTO.creativeId)
+            .ifEmpty { throw BusinessException(ErrorCode.SCHEDULES_NOT_FOUND) }
+
+        return schedules.map {
+            it.updateCreative(creativeDTO)
+            scheduleRepository.update(it)
+        }
+    }
+
+    private fun syncCandidateInRedis(schedule: Schedule) {
         val candidateKey = "candidate:schedule:${schedule.id}"
         scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
+    }
+
+    private fun syncCandidatesInRedis(schedules: List<Schedule>) {
+        schedules.forEach {
+            syncCandidateInRedis(it)
+        }
     }
 
 }
