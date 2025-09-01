@@ -28,7 +28,10 @@ class ScheduleSyncService(
     fun cacheCandidates() {
         val today = LocalDate.now()
         val currentTime = LocalTime.now()
+        cacheCandidates(today, currentTime)
+    }
 
+    fun cacheCandidates(today: LocalDate, currentTime: LocalTime) {
         val candidates = getCandidatesFromDB(today)
         val filteredCandidates = filterCandidates(candidates, currentTime)
 
@@ -68,6 +71,35 @@ class ScheduleSyncService(
         return candidates
             .filter { it.hasRestBudget() && it.isActiveByTime(currentTime) }
     }
+
+    fun getFilteredCandidatesFromRedis(currentTime: LocalTime): List<Schedule> {
+        val candidates = getCandidatesFromRedis()
+        return filterCandidates(candidates, currentTime)
+    }
+
+    fun getFilteredCandidatesFromDB(currentTime: LocalTime, today: LocalDate): List<Schedule> {
+        val candidates = getCandidatesFromDB(today)
+        return filterCandidates(candidates, currentTime)
+    }
+
+    /**
+     * Candidate Redis 캐싱
+     */
+    fun updateBudgetsOfCandidates(schedules: List<Schedule>) {
+        schedules.forEach { scheduleRedisTemplate.opsForValue().set("candidate:schedule:${it.id}", it) }
+    }
+
+    private fun syncCandidateInRedis(schedule: Schedule) {
+        val candidateKey = "candidate:schedule:${schedule.id}"
+        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
+    }
+
+    fun syncCandidatesInRedis(schedules: List<Schedule>) {
+        schedules.forEach {
+            syncCandidateInRedis(it)
+        }
+    }
+
 
     @Scheduled(cron = CRON_EXPRESSION_FOR_MIDNIGHT)
     fun resetSpentDailyBudgetsInRedis() {

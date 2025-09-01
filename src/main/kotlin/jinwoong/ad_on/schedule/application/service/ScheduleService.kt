@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional
 class ScheduleService(
     private val scheduleRepository: ScheduleRepository,
     private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
-    private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
     private val scheduleSyncService: ScheduleSyncService,
 ) {
     companion object {
@@ -111,7 +110,7 @@ class ScheduleService(
         }
         val updatedIds = schedulesToUpdate.mapNotNull { it.id }
 
-        syncCandidatesInRedis(schedulesToSync)
+        scheduleSyncService.syncCandidatesInRedis(schedulesToSync)
 
         return ScheduleUpdateResponse(updatedIds = updatedIds.toList())
     }
@@ -147,15 +146,6 @@ class ScheduleService(
         }
     }
 
-    private fun syncCandidateInRedis(schedule: Schedule) {
-        val candidateKey = "candidate:schedule:${schedule.id}"
-        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
-    }
 
-    private fun syncCandidatesInRedis(schedules: List<Schedule>) {
-        schedules.forEach {
-            syncCandidateInRedis(it)
-        }
-    }
 
 }

@@ -13,7 +13,6 @@ import java.time.LocalTime
 @Service
 class AdServeService(
     private val scheduleSyncService: ScheduleSyncService,
-    private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
     private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
     private val scheduleRepository: ScheduleRepository,
 ) {
@@ -26,42 +25,43 @@ class AdServeService(
      * Redis 조회 -> DB 조회 (fallback)
      */
     fun getServingAd(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
-        val candidates = scheduleSyncService.getCandidatesFromRedis()
-        val servingAd = getServingAdFromRedis(candidates)
+        val filteredCandidates = scheduleSyncService.getFilteredCandidatesFromRedis(currentTime)
+        val servingAd = getServingAdFromRedis(filteredCandidates, currentTime)
         if (servingAd != null) return servingAd
 
         log.info("Redis 조회 실패. DB에서 조회")
         return getServingAdFromDB(today, currentTime)
     }
 
-    fun getServingAdFromRedis(candidates: List<Schedule>): ServingAdDTO? {
+    fun getServingAdFromRedis(candidates: List<Schedule>, currentTime: LocalTime): ServingAdDTO? {
         if (candidates.isEmpty()) return null
-
-        val servingAd = candidates.random()
-        val budgetUpdatedAd = updateBudgetAfterServe(servingAd) ?: servingAd
-        val servingAdDTO = ServingAdDTO.from(budgetUpdatedAd)
-        return servingAdDTO
+        return chooseRandomAd(candidates, currentTime)
     }
 
     fun getServingAdFromDB(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
-        val fallbackCandidates = scheduleSyncService.getCandidatesFromDB(today)
-        val filteredCandidates = scheduleSyncService.filterCandidates(fallbackCandidates, currentTime)
+        val filteredCandidates = scheduleSyncService.getFilteredCandidatesFromDB(currentTime, today)
 
         if (filteredCandidates.isEmpty()) {
             return null
         }
 
-        val servingAd = filteredCandidates.random()
-        updateBudgetAfterServe(servingAd)
-        val servingAdDTO = ServingAdDTO.from(servingAd)
-        return servingAdDTO
+        return chooseRandomAd(filteredCandidates, currentTime)
+    }
+
+    fun chooseRandomAd(candidates: List<Schedule>, currentTime: LocalTime): ServingAdDTO {
+        val servingAd = candidates.random()
+        val budgetUpdatedAd = updateBudgetAfterServe(servingAd, currentTime)
+        return ServingAdDTO.from(budgetUpdatedAd)
     }
 
     /**
      * 광고 서빙 후 budget 업데이트
      */
-    fun updateBudgetAfterServe(schedule: Schedule): Schedule {
-        val candidateIds = scheduleSyncService.getCandidatesFromRedis().mapNotNull { it.id }.toSet()
+    fun updateBudgetAfterServe(schedule: Schedule, currentTime: LocalTime): Schedule {
+        if (!schedule.hasToPay()) {
+            return schedule
+        }
+        val candidateIds = scheduleSyncService.getFilteredCandidatesFromRedis(currentTime).mapNotNull { it.id }.toSet()
         val schedulesToUpdate = getSchedulesToUpdate(schedule)
 
         schedulesToUpdate.forEach {
@@ -77,7 +77,8 @@ class AdServeService(
         }
 
         // Candidate Redis 갱신
-        cacheCandidatesToRedis(schedulesToUpdate.filter { candidateIds.contains(it.id) })
+        val candidatesToUpdate = schedulesToUpdate.filter { candidateIds.contains(it.id) }
+        scheduleSyncService.updateBudgetsOfCandidates(candidatesToUpdate)
 
         // 플랫폼 서버 이력 전송
         sendHistoryToPlatform(schedule)
@@ -96,6 +97,7 @@ class AdServeService(
         scheduleRepository.findAllByCampaignId(schedule.campaign.campaignId)
             .union(scheduleRepository.findAllByAdSetId(schedule.adSet.adSetId))
             .distinctBy { it.id }
+            .filter { it.hasToPay() }
             .toList()
 
     /**
@@ -113,17 +115,7 @@ class AdServeService(
         return updated
     }
 
-    /**
-     * Candidate Redis 캐싱
-     */
-    private fun cacheCandidatesToRedis(schedules: List<Schedule>) {
-        schedules.forEach { scheduleRedisTemplate.opsForValue().set("candidate:schedule:${it.id}", it) }
-    }
-
-
     private fun sendHistoryToPlatform(schedule: Schedule) {
 
     }
-
-
 }
