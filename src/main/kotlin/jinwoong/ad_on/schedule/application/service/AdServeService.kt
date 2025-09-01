@@ -51,6 +51,7 @@ class AdServeService(
     fun chooseRandomAd(candidates: List<Schedule>, currentTime: LocalTime): ServingAdDTO {
         val servingAd = candidates.random()
         val budgetUpdatedAd = updateBudgetAfterServe(servingAd, currentTime)
+        sendHistoryToPlatform(budgetUpdatedAd)
         return ServingAdDTO.from(budgetUpdatedAd)
     }
 
@@ -79,9 +80,6 @@ class AdServeService(
         // Candidate Redis 갱신
         val candidatesToUpdate = schedulesToUpdate.filter { candidateIds.contains(it.id) }
         scheduleSyncService.updateBudgetsOfCandidates(candidatesToUpdate)
-
-        // 플랫폼 서버 이력 전송
-        sendHistoryToPlatform(schedule)
 
         log.info(
             "광고 ${schedule.id} 소진액 수정: total=${schedule.campaign.spentTotalBudget}, daily=${schedule.adSet.spentDailyBudget}"
