@@ -61,9 +61,9 @@ class Schedule(
     fun updateCreative(creativeDTO: CreativeDTO) {
         creative.landingUrl = creativeDTO.landingUrl ?: creative.landingUrl
         creative.creativeStatus = creativeDTO.creativeStatus ?: creative.creativeStatus
-        creative.look.creativeImage = creativeDTO.creativeImage
-        creative.look.creativeMovie = creativeDTO.creativeMovie
-        creative.look.creativeLogo = creativeDTO.creativeLogo
+        creative.look.imageURL = creativeDTO.creativeImage
+        creative.look.movieURL = creativeDTO.creativeMovie
+        creative.look.logoURL = creativeDTO.creativeLogo
         creative.look.copyrightingTitle = creativeDTO.copyrightingTitle
         creative.look.copyrightingSubtitle = creativeDTO.copyrightingSubtitle
     }

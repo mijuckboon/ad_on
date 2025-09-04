@@ -78,9 +78,9 @@ class ScheduleService(
             creativeStatus = Status.valueOf(scheduleDTO.creativeStatus),
             landingUrl = scheduleDTO.landingUrl,
             look = Look(
-                creativeImage = scheduleDTO.creativeImage,
-                creativeMovie = scheduleDTO.creativeMovie,
-                creativeLogo = scheduleDTO.creativeLogo,
+                imageURL = scheduleDTO.creativeImage,
+                movieURL = scheduleDTO.creativeMovie,
+                logoURL = scheduleDTO.creativeLogo,
                 copyrightingTitle = scheduleDTO.copyrightingTitle,
                 copyrightingSubtitle = scheduleDTO.copyrightingSubtitle
             )

@@ -17,9 +17,9 @@ data class ServingAdDTO(
         fun from(schedule: Schedule): ServingAdDTO {
             return ServingAdDTO(
                 scheduleId = schedule.id!!,
-                creativeImage = schedule.creative.look.creativeImage,
-                creativeMovie = schedule.creative.look.creativeMovie,
-                creativeLogo = schedule.creative.look.creativeLogo,
+                creativeImage = schedule.creative.look.imageURL,
+                creativeMovie = schedule.creative.look.movieURL,
+                creativeLogo = schedule.creative.look.logoURL,
                 copyrightingTitle = schedule.creative.look.copyrightingTitle,
                 copyrightingSubtitle = schedule.creative.look.copyrightingSubtitle,
                 landingUrl = schedule.creative.landingUrl,

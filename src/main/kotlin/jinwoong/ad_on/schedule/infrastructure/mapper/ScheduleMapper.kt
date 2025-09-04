@@ -55,9 +55,9 @@ class ScheduleMapper(
         )
 
         private fun Look.toEntity(): LookVO = LookVO(
-            creativeImage = this.creativeImage,
-            creativeMovie = this.creativeMovie,
-            creativeLogo = this.creativeLogo,
+            imageURL = this.imageURL,
+            movieURL = this.movieURL,
+            logoURL = this.logoURL,
             copyrightingTitle = this.copyrightingTitle,
             copyrightingSubtitle = this.copyrightingSubtitle
         )
@@ -90,9 +90,9 @@ class ScheduleMapper(
         )
 
         private fun LookVO.toDomain(): Look = Look(
-            creativeImage = this.creativeImage,
-            creativeMovie = this.creativeMovie,
-            creativeLogo = this.creativeLogo,
+            imageURL = this.imageURL,
+            movieURL = this.movieURL,
+            logoURL = this.logoURL,
             copyrightingTitle = this.copyrightingTitle,
             copyrightingSubtitle = this.copyrightingSubtitle
         )

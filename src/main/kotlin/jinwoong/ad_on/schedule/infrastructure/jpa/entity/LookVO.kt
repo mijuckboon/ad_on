@@ -5,14 +5,14 @@ import jakarta.persistence.Embeddable
 
 @Embeddable
 data class LookVO(
-    @Column(name = "creative_image", length = 2000)
-    var creativeImage: String? = null,
+    @Column(name = "image_url", length = 2000)
+    var imageURL: String? = null,
 
-    @Column(name = "creative_movie", length = 2000)
-    var creativeMovie: String? = null,
+    @Column(name = "movie_url", length = 2000)
+    var movieURL: String? = null,
 
-    @Column(name = "creative_logo", length = 2000)
-    var creativeLogo: String? = null,
+    @Column(name = "logo_url", length = 2000)
+    var logoURL: String? = null,
 
     @Column(name = "copyrighting_title")
     var copyrightingTitle: String? = null,
@@ -20,4 +20,4 @@ data class LookVO(
     @Column(name = "copyrighting_subtitle")
     var copyrightingSubtitle: String? = null,
 
-)
+    )
