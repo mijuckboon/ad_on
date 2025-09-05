@@ -111,7 +111,7 @@ class ScheduleService(
         val updatedIds = schedulesToUpdate.mapNotNull { it.id }
 
         scheduleSyncService.syncCandidatesInRedis(schedulesToSync)
-
+        log.info("스케줄 수정 완료, count: ${updatedIds.size}")
         return ScheduleUpdateResponse(updatedIds = updatedIds.toList())
     }
 

@@ -1,0 +1,130 @@
+package jinwoong.ad_on.schedule.application.service
+
+import jinwoong.ad_on.schedule.domain.aggregate.*
+import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
+import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
+import jinwoong.ad_on.schedule.presentation.dto.request.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.kotlin.*
+import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.data.redis.core.ValueOperations
+import java.time.LocalDate
+import java.time.LocalTime
+
+class ScheduleServiceTest {
+
+    private val scheduleRepository: ScheduleRepository = mock()
+    private val redisTemplate: RedisTemplate<String, SpentBudgets> = mock()
+    private val valueOps: ValueOperations<String, SpentBudgets> = mock()
+    private val scheduleSyncService: ScheduleSyncService = mock()
+
+    private lateinit var scheduleService: ScheduleService
+
+    @BeforeEach
+    fun setUp() {
+        whenever(redisTemplate.opsForValue()).thenReturn(valueOps)
+        scheduleService = ScheduleService(scheduleRepository, redisTemplate, scheduleSyncService)
+    }
+
+    @Test
+    fun createSchedulesTest() {
+        // given
+        val request = ScheduleSaveRequest(schedules = listOf(createScheduleDTO()))
+        val savedSchedule = createSavedSchedule(id = 99L)
+
+        whenever(scheduleRepository.save(any())).thenReturn(savedSchedule)
+
+        // when
+        val response = scheduleService.createSchedules(request)
+
+        // then
+        assertEquals(listOf(99L), response.savedIds)
+        verify(valueOps).set(eq("spentBudgets:schedule:99"), any()) // verify: 1번 호출
+    }
+
+    @Test
+    fun updateSchedulesTest() {
+        // given
+        val existingSchedule = createSavedSchedule(id = 101L)
+        whenever(scheduleRepository.findAllByCampaignId(1L)).thenReturn(listOf(existingSchedule))
+        whenever(scheduleRepository.update(any())).thenAnswer { it.arguments[0] }
+        whenever(scheduleSyncService.getCandidatesFromRedis()).thenReturn(listOf(existingSchedule))
+
+        val request = ScheduleUpdateRequest(campaign = CampaignDTO(campaignId = 1L, totalBudget = 2000L))
+
+        // when
+        val response = scheduleService.updateSchedules(request)
+
+        // then
+        assertEquals(listOf(101L), response.updatedIds)
+
+        // 업데이트된 객체 내용 확인
+        val captor = argumentCaptor<Schedule>()
+        verify(scheduleRepository).update(captor.capture()) // 넘어간 객체 기록
+        val updatedSchedule = captor.firstValue // secondValue, allValues, ...
+
+        // 실제 budget이 2000으로 업데이트되었는지 확인
+        assertEquals(2000L, updatedSchedule.campaign.totalBudget)
+        verify(scheduleSyncService).syncCandidatesInRedis(any())
+    }
+
+    private fun createSavedSchedule(id: Long): Schedule =
+        Schedule(
+            campaign = Campaign(
+                campaignId = 1L,
+                totalBudget = 1000L,
+                spentTotalBudget = 100L
+            ),
+            adSet = AdSet(
+                adSetId = 2L,
+                adSetStartDate = LocalDate.parse("2025-09-01"),
+                adSetEndDate = LocalDate.parse("2025-09-30"),
+                adSetStartTime = LocalTime.parse("00:00"),
+                adSetEndTime = LocalTime.parse("23:59"),
+                adSetStatus = Status.ON,
+                dailyBudget = 500L,
+                unitCost = 10L,
+                paymentType = PaymentType.CPC,
+                spentDailyBudget = 50L
+            ),
+            creative = Creative(
+                creativeId = 3L,
+                creativeStatus = Status.ON,
+                landingUrl = "http://test.com",
+                look = Look(
+                    imageURL = "img.png",
+                    movieURL = null,
+                    logoURL = "logo.png",
+                    copyrightingTitle = "title",
+                    copyrightingSubtitle = "subtitle"
+                )
+            )
+        ).apply { this.id = id }
+
+    private fun createScheduleDTO(): ScheduleDTO =
+        ScheduleDTO(
+            campaignId = 1L,
+            totalBudget = 1000L,
+            spentTotalBudget = 100L,
+            adSetId = 2L,
+            adSetStartDate = LocalDate.parse("2025-09-01"),
+            adSetEndDate = LocalDate.parse("2025-09-30"),
+            adSetStartTime = LocalTime.parse("00:00"),
+            adSetEndTime = LocalTime.parse("23:59"),
+            adSetStatus = "ON",
+            dailyBudget = 500L,
+            unitCost = 10L,
+            paymentType = "CPC",
+            spentDailyBudget = 50L,
+            creativeId = 3L,
+            creativeStatus = "ON",
+            landingUrl = "http://test.com",
+            creativeImage = "img.png",
+            creativeMovie = null,
+            creativeLogo = "logo.png",
+            copyrightingTitle = "title",
+            copyrightingSubtitle = "subtitle"
+        )
+}
