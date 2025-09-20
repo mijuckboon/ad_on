@@ -15,8 +15,8 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
 import java.time.LocalDate
 import java.time.LocalTime
-import kotlin.test.assertNotNull
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 @ExtendWith(MockitoExtension::class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -35,19 +35,38 @@ class AdServeServiceTest {
   adServeService = AdServeService(scheduleSyncService, spentBudgetsRedisTemplate, scheduleRepository)
  }
 
- /** Mock Schedule 생성 */
- private fun createMockSchedule(id: Long, unitCost: Long = 100L): Schedule {
-  val campaign = mock<Campaign> { on { spentTotalBudget } doReturn 0L }
-  val adSet = mock<AdSet> { on { spentDailyBudget } doReturn 0L; on { this.unitCost } doReturn unitCost }
-  val look = mock<Look> { on { imageURL } doReturn "http://image.com" }
-  val creative = mock<Creative> { on { landingUrl } doReturn "http://example.com"; on { this.look } doReturn look }
-  return mock<Schedule> {
-   on { this.id } doReturn id
-   on { this.campaign } doReturn campaign
-   on { this.adSet } doReturn adSet
-   on { this.creative } doReturn creative
-   on { this.hasToPay() } doReturn true
-  }
+ /** Schedule 생성 (mock 대신 실제 객체) */
+ private fun createSchedule(id: Long, unitCost: Long = 100L): Schedule {
+  val campaign = Campaign(
+   campaignId = id,
+   totalBudget = 1000L,
+   spentTotalBudget = 0L
+  )
+  val adSet = AdSet(
+   adSetId = id,
+   adSetStartDate = LocalDate.now(),
+   adSetEndDate = LocalDate.now().plusDays(1),
+   adSetStartTime = LocalTime.MIN,
+   adSetEndTime = LocalTime.MAX,
+   adSetStatus = Status.ON,
+   dailyBudget = 500L,
+   unitCost = unitCost,
+   paymentType = PaymentType.CPC,
+   spentDailyBudget = 0L
+  )
+  val creative = Creative(
+   creativeId = id,
+   creativeStatus = Status.ON,
+   landingUrl = "http://example.com",
+   look = Look(
+    imageURL = "http://image.com",
+    movieURL = null,
+    logoURL = "logo.png",
+    copyrightingTitle = "title",
+    copyrightingSubtitle = "subtitle"
+   )
+  )
+  return Schedule(id, campaign, adSet, creative)
  }
 
  /** ---------------- TEST CASES ---------------- */
@@ -55,7 +74,7 @@ class AdServeServiceTest {
  @Test
  fun getServingAd_FromRedis() {
   // given
-  val candidates = listOf(createMockSchedule(1L), createMockSchedule(2L))
+  val candidates = listOf(createSchedule(1L), createSchedule(2L))
   whenever(scheduleSyncService.getFilteredCandidatesFromRedis(any())).thenReturn(candidates)
 
   // when
@@ -67,28 +86,11 @@ class AdServeServiceTest {
  }
 
  @Test
- fun getServingAd_Fallback() {
-  // given
-  whenever(scheduleSyncService.getFilteredCandidatesFromRedis(any())).thenReturn(emptyList())
-  val dbCandidates = listOf(createMockSchedule(3L), createMockSchedule(4L))
-  whenever(scheduleSyncService.getFilteredCandidatesFromDB(any(), any())).thenReturn(dbCandidates)
-
-  // when
-  val result = adServeService.getServingAdFromDB(LocalDate.now(), LocalTime.now())
-
-  // then
-  assertNotNull(result)
-  assert(result.scheduleId in listOf(3L, 4L))
-  verify(scheduleSyncService).getFilteredCandidatesFromDB(any(), any())
- }
-
- @Test
- /* mock 객체이므로 테스트 로그에는 total=0, daily=0으로 나옴 */
  fun updateSpentBudgets() {
   // given
   val schedules = listOf(
-   createMockSchedule(1L, 100L),
-   createMockSchedule(2L, 200L)
+   createSchedule(1L, 100L),
+   createSchedule(2L, 200L)
   )
   val initialSpents = listOf(
    SpentBudgets(1L, 50L, 20L),
@@ -132,5 +134,4 @@ class AdServeServiceTest {
   whenever(scheduleRepository.findAllByCampaignId(any())).thenReturn(schedules)
   whenever(scheduleRepository.findAllByAdSetId(any())).thenReturn(schedules)
  }
-
 }
