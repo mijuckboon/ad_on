@@ -7,6 +7,7 @@ import jinwoong.ad_on.schedule.presentation.dto.response.ServingAdDTO
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -24,28 +25,16 @@ class AdServeService(
      * 서빙할 광고 선택
      * Redis 조회 -> DB 조회 (fallback)
      */
+    @Transactional(readOnly = true)
     fun getServingAd(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
         val filteredCandidates = scheduleSyncService.getFilteredCandidatesFromRedis(currentTime)
         val servingAd = getServingAdFromRedis(filteredCandidates, currentTime)
-        if (servingAd != null) return servingAd
-
-        log.info("Redis 조회 실패. DB에서 조회")
-        return getServingAdFromDB(today, currentTime)
+        return servingAd
     }
 
     fun getServingAdFromRedis(candidates: List<Schedule>, currentTime: LocalTime): ServingAdDTO? {
         if (candidates.isEmpty()) return null
         return chooseRandomAd(candidates, currentTime)
-    }
-
-    fun getServingAdFromDB(today: LocalDate, currentTime: LocalTime): ServingAdDTO? {
-        val filteredCandidates = scheduleSyncService.getFilteredCandidatesFromDB(currentTime, today)
-
-        if (filteredCandidates.isEmpty()) {
-            return null
-        }
-
-        return chooseRandomAd(filteredCandidates, currentTime)
     }
 
     fun chooseRandomAd(candidates: List<Schedule>, currentTime: LocalTime): ServingAdDTO {
