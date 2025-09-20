@@ -22,116 +22,150 @@ import kotlin.test.assertTrue
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ScheduleSyncServiceTest {
 
- @Mock lateinit var scheduleRedisTemplate: RedisTemplate<String, Schedule>
- @Mock lateinit var spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
- @Mock lateinit var scheduleRepository: ScheduleRepository
- @Mock lateinit var scheduleValueOps: ValueOperations<String, Schedule>
- @Mock lateinit var spentValueOps: ValueOperations<String, SpentBudgets>
+    @Mock
+    lateinit var scheduleRedisTemplate: RedisTemplate<String, Schedule>
+    @Mock
+    lateinit var spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
+    @Mock
+    lateinit var scheduleRepository: ScheduleRepository
+    @Mock
+    lateinit var scheduleValueOps: ValueOperations<String, Schedule>
+    @Mock
+    lateinit var spentValueOps: ValueOperations<String, SpentBudgets>
 
- private lateinit var scheduleSyncService: ScheduleSyncService
+    private lateinit var scheduleSyncService: ScheduleSyncService
 
- @BeforeEach
- fun setup() {
-  whenever(scheduleRedisTemplate.opsForValue()).thenReturn(scheduleValueOps)
-  whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentValueOps)
-  scheduleSyncService = ScheduleSyncService(scheduleRedisTemplate, spentBudgetsRedisTemplate, scheduleRepository)
- }
+    @BeforeEach
+    fun setup() {
+        whenever(scheduleRedisTemplate.opsForValue()).thenReturn(scheduleValueOps)
+        whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentValueOps)
+        scheduleSyncService = ScheduleSyncService(scheduleRedisTemplate, spentBudgetsRedisTemplate, scheduleRepository)
+    }
 
- /**------------------ TESTS ------------------*/
+    /**------------------ TESTS ------------------*/
 
- @Test
- fun cacheCandidateTest() {
-  // given
-  val schedule = createSchedule(1)
-  val spent = SpentBudgets(scheduleId = 1, spentTotalBudget = 50L, spentDailyBudget = 5L)
-  whenever(scheduleRepository.findCandidates(any())).thenReturn(listOf(schedule))
-  whenever(spentValueOps.get("spentBudgets:schedule:1")).thenReturn(spent)
+    @Test
+    fun cacheCandidateTest() {
+        // given
+        val schedule = createSchedule(1)
+        val spentBudgets = SpentBudgets(
+            scheduleId = 1,
+            spentTotalBudget = 50L,
+            spentDailyBudget = 5L
+        )
+        whenever(scheduleRepository.findCandidates(any())).thenReturn(listOf(schedule))
+        whenever(spentValueOps.get("spentBudgets:schedule:1")).thenReturn(spentBudgets)
 
-  // when
-  scheduleSyncService.cacheCandidates(LocalDate.now(), LocalTime.now())
+        // when
+        scheduleSyncService.cacheCandidates(LocalDate.now(), LocalTime.now())
 
-  // then
-  verify(scheduleValueOps).set(eq("candidate:schedule:1"), check {
-   assertEquals(50L, it.campaign.spentTotalBudget)
-   assertEquals(5L, it.adSet.spentDailyBudget)
-  })
- }
+        // then
+        verify(scheduleValueOps).set(eq("candidate:schedule:1"), check {
+            assertEquals(50L, it.campaign.spentTotalBudget)
+            assertEquals(5L, it.adSet.spentDailyBudget)
+        })
+    }
 
- @Test
- fun getCandidatesFromRedisTest() {
-  // given
-  val schedule = createSchedule(2)
-  whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:2"))
-  whenever(scheduleValueOps.get("candidate:schedule:2")).thenReturn(schedule)
+    @Test
+    fun getCandidatesFromRedisTest() {
+        // given
+        val schedule = createSchedule(2)
+        whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:2"))
+        whenever(scheduleValueOps.get("candidate:schedule:2")).thenReturn(schedule)
 
-  // when
-  val result = scheduleSyncService.getCandidatesFromRedis()
+        // when
+        val result = scheduleSyncService.getCandidatesFromRedis()
 
-  // then
-  assertEquals(1, result.size)
-  assertEquals(2L, result.first().id)
- }
+        // then
+        assertEquals(1, result.size)
+        assertEquals(2L, result.first().id)
+    }
 
- @Test
- fun filterCandidatesTest() {
-  val schedule = createSchedule(3)
-  // spentTotalBudget < totalBudget && spentDailyBudget < dailyBudget
-  schedule.campaign.spentTotalBudget = 50
-  schedule.adSet.spentDailyBudget = 5
+    @Test
+    fun filterCandidatesTest() {
+        val schedule = createSchedule(3)
+        // spentTotalBudget < totalBudget && spentDailyBudget < dailyBudget
+        schedule.campaign.spentTotalBudget = 50
+        schedule.adSet.spentDailyBudget = 5
 
-  val filtered = scheduleSyncService.filterCandidates(listOf(schedule), LocalTime.now())
-  assertTrue(filtered.contains(schedule))
- }
+        val filtered = scheduleSyncService.filterCandidates(listOf(schedule), LocalTime.now())
+        assertTrue(filtered.contains(schedule))
+    }
 
- @Test
- fun filterCandidatesTest_Filters() {
-  val schedule = createSchedule(3)
-  // spentTotalBudget < totalBudget && spentDailyBudget < dailyBudget
-  schedule.campaign.spentTotalBudget = 1100
-  schedule.adSet.spentDailyBudget = 5
-  val filtered = scheduleSyncService.filterCandidates(listOf(schedule), LocalTime.now())
-  assertTrue(!filtered.contains(schedule))
- }
+    @Test
+    fun filterCandidatesTest_Filters() {
+        val schedule = createSchedule(3)
+        // spentTotalBudget < totalBudget && spentDailyBudget < dailyBudget
+        schedule.campaign.spentTotalBudget = 1100
+        schedule.adSet.spentDailyBudget = 5
+        val filtered = scheduleSyncService.filterCandidates(listOf(schedule), LocalTime.now())
+        assertTrue(!filtered.contains(schedule))
+    }
 
- @Test
- fun updateBudgetsOfCandidatesTest() {
-  val schedule1 = createSchedule(4)
-  val schedule2 = createSchedule(5)
-  val list = listOf(schedule1, schedule2)
+    @Test
+    fun updateBudgetsOfCandidatesTest() {
+        val schedule1 = createSchedule(4)
+        val schedule2 = createSchedule(5)
+        val list = listOf(schedule1, schedule2)
 
-  scheduleSyncService.updateBudgetsOfCandidates(list)
+        scheduleSyncService.updateBudgetsOfCandidates(list)
 
-  verify(scheduleValueOps).set(eq("candidate:schedule:4"), eq(schedule1))
-  verify(scheduleValueOps).set(eq("candidate:schedule:5"), eq(schedule2))
- }
+        verify(scheduleValueOps).set(eq("candidate:schedule:4"), eq(schedule1))
+        verify(scheduleValueOps).set(eq("candidate:schedule:5"), eq(schedule2))
+    }
 
- @Test
- fun resetSpentDailyBudgetsInRedisTest() {
-  val schedule = createSchedule(6)
-  val spent = SpentBudgets(6, spentTotalBudget = 100, spentDailyBudget = 50)
+    @Test
+    fun resetSpentDailyBudgetsInRedisTest() {
+        val schedule = createSchedule(6)
+        val spent = SpentBudgets(6, spentTotalBudget = 100, spentDailyBudget = 50)
 
-  whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:6"))
-  whenever(scheduleValueOps.get("candidate:schedule:6")).thenReturn(schedule)
-  whenever(spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")).thenReturn(setOf("spentBudgets:schedule:6"))
-  whenever(spentValueOps.get("spentBudgets:schedule:6")).thenReturn(spent)
+        whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:6"))
+        whenever(scheduleValueOps.get("candidate:schedule:6")).thenReturn(schedule)
+        whenever(spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")).thenReturn(setOf("spentBudgets:schedule:6"))
+        whenever(spentValueOps.get("spentBudgets:schedule:6")).thenReturn(spent)
 
-  scheduleSyncService.resetSpentDailyBudgetsInRedis()
+        scheduleSyncService.resetSpentDailyBudgetsInRedis()
 
-  assertEquals(0L, schedule.adSet.spentDailyBudget)
-  verify(scheduleValueOps).set(eq("candidate:schedule:6"), eq(schedule))
-  verify(spentValueOps).set(eq("spentBudgets:schedule:6"), check {
-   assertEquals(0L, it.spentDailyBudget)
-  })
- }
+        assertEquals(0L, schedule.adSet.spentDailyBudget)
+        verify(scheduleValueOps).set(eq("candidate:schedule:6"), eq(schedule))
+        verify(spentValueOps).set(eq("spentBudgets:schedule:6"), check {
+            assertEquals(0L, it.spentDailyBudget)
+        })
+    }
 
- private fun createSchedule(id: Long, totalBudget: Long = 1000L, dailyBudget: Long = 100L): Schedule {
-  val campaign = Campaign(campaignId = id, totalBudget = totalBudget, spentTotalBudget = 0L)
-  val adSet = AdSet(adSetId = id, adSetStartDate = LocalDate.now(), adSetEndDate = LocalDate.now(),
-   adSetStartTime = LocalTime.MIN, adSetEndTime = LocalTime.MAX, adSetStatus = Status.ON,
-   dailyBudget = dailyBudget, unitCost = 10L, paymentType = PaymentType.CPC, spentDailyBudget = 0L)
-  val creative = Creative(creativeId = id, creativeStatus = Status.ON, landingUrl = "http://example.com",
-   look = Look(imageURL = "img.png", movieURL = null, logoURL = "logo.png", copyrightingTitle = "title",
-    copyrightingSubtitle = "subtitle"))
-  return Schedule(id, campaign, adSet, creative)
- }
+    private fun createSchedule(id: Long, totalBudget: Long = 1000L, dailyBudget: Long = 100L): Schedule {
+        val campaign = Campaign(
+            campaignId = id,
+            totalBudget = totalBudget,
+            spentTotalBudget = 0L
+        )
+
+        val adSet = AdSet(
+            adSetId = id,
+            adSetStartDate = LocalDate.now(),
+            adSetEndDate = LocalDate.now(),
+            adSetStartTime = LocalTime.MIN,
+            adSetEndTime = LocalTime.MAX,
+            adSetStatus = Status.ON,
+            dailyBudget = dailyBudget,
+            unitCost = 10L,
+            paymentType = PaymentType.CPC,
+            spentDailyBudget = 0L
+        )
+
+        val creative = Creative(
+            creativeId = id,
+            creativeStatus = Status.ON,
+            landingUrl = "http://example.com",
+            look = Look(
+                imageURL = "img.png",
+                movieURL = null,
+                logoURL = "logo.png",
+                copyrightingTitle = "title",
+                copyrightingSubtitle = "subtitle"
+            )
+        )
+
+        return Schedule(id, campaign, adSet, creative)
+    }
 }
