@@ -8,19 +8,41 @@ import org.springframework.stereotype.Service
 
 @Service
 class ScheduleMapper(
-    private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
+    private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
+    private val spentBudgetLongRedisTemplate: RedisTemplate<String, Long>
 ) {
-     fun toDomain(entity: ScheduleEntity): Schedule {
-         val spentBudgets = spentBudgetsRedisTemplate.opsForValue()
-             .get("spentBudgets:schedule:${entity.id}")
+    fun toDomain(entity: ScheduleEntity): Schedule {
+        val (spentTotalBudget, spentDailyBudget) = getBudgets(entity.id!!)
 
-         return Schedule(
-             id = entity.id,
-             campaign = entity.campaign.toDomain(spentBudgets?.spentTotalBudget ?: 0L),
-             adSet = entity.adSet.toDomain(spentBudgets?.spentDailyBudget ?: 0L),
-             creative = entity.creative.toDomain(),
-         )
-     }
+        return Schedule(
+            id = entity.id,
+            campaign = entity.campaign.toDomain(spentTotalBudget),
+            adSet = entity.adSet.toDomain(spentDailyBudget),
+            creative = entity.creative.toDomain(),
+        )
+    }
+
+    /**
+     * Schedule ID 기준으로 Redis에서 budget 조회
+     * - 우선 v1 key 조회
+     * - 없으면 legacy key fallback
+     * - 그래도 없으면 0L
+     */
+    private fun getBudgets(scheduleId: Long): Pair<Long, Long> {
+        val spentTotalKey = "spentTotalBudget_v1:schedule:$scheduleId"
+        val spentDailyKey = "spentDailyBudget_v1:schedule:$scheduleId"
+        val legacyKey = "spentBudgets:schedule:$scheduleId"
+
+        val spentTotal = spentBudgetLongRedisTemplate.opsForValue().get(spentTotalKey)
+            ?: spentBudgetsRedisTemplate.opsForValue().get(legacyKey)?.spentTotalBudget
+            ?: 0L
+
+        val spentDaily = spentBudgetLongRedisTemplate.opsForValue().get(spentDailyKey)
+            ?: spentBudgetsRedisTemplate.opsForValue().get(legacyKey)?.spentDailyBudget
+            ?: 0L
+
+        return spentTotal to spentDaily
+    }
 
         fun toEntity(domain: Schedule): ScheduleEntity = ScheduleEntity(
             id = domain.id,
