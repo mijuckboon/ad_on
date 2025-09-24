@@ -2,6 +2,7 @@ package jinwoong.ad_on.schedule.application.service
 
 import jinwoong.ad_on.schedule.domain.aggregate.Schedule
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
+import jinwoong.ad_on.schedule.infrastructure.redis.ScheduleRedisKey
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
@@ -15,12 +16,13 @@ class ScheduleSyncService(
     private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
     private val spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>,
     private val scheduleRepository: ScheduleRepository,
+    private val spentBudgetLongRedisTemplate: RedisTemplate<String, Long>,
 ) {
     companion object {
         private val log = LoggerFactory.getLogger(ScheduleSyncService::class.java)
         const val CACHE_INTERVAL_IN_MILISEC = 5 * 60 * 1000L // 5분
-        const val CRON_EXPRESSION_FOR_MIDNIGHT = "0 0 0 * * *"
     }
+
     /**
      * 서빙 가능한 광고를 Redis에 캐싱
      */
@@ -35,27 +37,36 @@ class ScheduleSyncService(
         val candidates = getCandidatesFromDB(today)
         val filteredCandidates = filterCandidates(candidates, currentTime)
 
+        val candidateScanPattern = ScheduleRedisKey.CANDIDATE_V1.scanPattern
+
         // 기존 캐시 초기화
-        scheduleRedisTemplate.delete(scheduleRedisTemplate.keys("candidate:schedule:*"))
+        scheduleRedisTemplate.delete(scheduleRedisTemplate.keys(candidateScanPattern))
 
         // budget 정보를 candidate에 반영
         filteredCandidates.forEach { schedule ->
             val id = requireNotNull(schedule.id)
-            val budgetKey = "spentBudgets:schedule:$id"
+            val spentTotalBudgetKey = ScheduleRedisKey.SPENT_TOTAL_BUDGET_V1.key(id)
+            val spentDailyBudgetKey = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.key(id)
+            val legacySpentBudgetsKey = ScheduleRedisKey.LEGACY_SPENT_BUDGETS.key(id)
 
-            spentBudgetsRedisTemplate.opsForValue().get(budgetKey)?.let { b ->
-                schedule.campaign.spentTotalBudget = b.spentTotalBudget
-                schedule.adSet.spentDailyBudget = b.spentDailyBudget
-            }
+            val spentTotalBudget = spentBudgetLongRedisTemplate.opsForValue()
+                .get(spentTotalBudgetKey) ?: spentBudgetsRedisTemplate.opsForValue()
+                .get(legacySpentBudgetsKey)?.spentTotalBudget ?: 0L
+            val spentDailyBudget = spentBudgetLongRedisTemplate.opsForValue()
+                .get(spentDailyBudgetKey) ?: spentBudgetsRedisTemplate.opsForValue()
+                .get(legacySpentBudgetsKey)?.spentDailyBudget ?: 0L
 
-            val candidateKey = "candidate:schedule:$id"
+            schedule.campaign.spentTotalBudget = spentTotalBudget
+            schedule.adSet.spentDailyBudget = spentDailyBudget
+
+            val candidateKey = ScheduleRedisKey.CANDIDATE_V1.key(id)
             scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
         }
         log.info("캐시 갱신 완료, count: ${filteredCandidates.size}")
     }
 
     fun getCandidatesFromRedis(): List<Schedule> {
-        val keys = scheduleRedisTemplate.keys("candidate:schedule:*")
+        val keys = scheduleRedisTemplate.keys(ScheduleRedisKey.CANDIDATE_V1.scanPattern)
         if (keys.isEmpty()) return emptyList()
 
         return keys.mapNotNull { scheduleRedisTemplate.opsForValue().get(it) }
@@ -77,20 +88,15 @@ class ScheduleSyncService(
         return filterCandidates(candidates, currentTime)
     }
 
-    fun getFilteredCandidatesFromDB(currentTime: LocalTime, today: LocalDate): List<Schedule> {
-        val candidates = getCandidatesFromDB(today)
-        return filterCandidates(candidates, currentTime)
-    }
-
     /**
      * Candidate Redis 캐싱
      */
     fun updateBudgetsOfCandidates(schedules: List<Schedule>) {
-        schedules.forEach { scheduleRedisTemplate.opsForValue().set("candidate:schedule:${it.id}", it) }
+        schedules.forEach { scheduleRedisTemplate.opsForValue().set(ScheduleRedisKey.CANDIDATE_V1.key(it.id!!), it) }
     }
 
     private fun syncCandidateInRedis(schedule: Schedule) {
-        val candidateKey = "candidate:schedule:${schedule.id}"
+        val candidateKey = ScheduleRedisKey.CANDIDATE_V1.key(schedule.id!!)
         scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
     }
 
@@ -100,27 +106,4 @@ class ScheduleSyncService(
         }
     }
 
-
-    @Scheduled(cron = CRON_EXPRESSION_FOR_MIDNIGHT)
-    fun resetSpentDailyBudgetsInRedis() {
-        val candidateKeys = scheduleRedisTemplate.keys("candidate:schedule:*")
-        candidateKeys.forEach { key ->
-            val schedule = scheduleRedisTemplate.opsForValue().get(key)
-            if (schedule != null) {
-                schedule.adSet.spentDailyBudget = 0L
-                scheduleRedisTemplate.opsForValue().set(key, schedule)
-            }
-        }
-
-        val spentBudgetKeys = spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")
-        spentBudgetKeys.forEach { key ->
-            val spentBudgets = spentBudgetsRedisTemplate.opsForValue().get(key)
-            if (spentBudgets != null) {
-                val updated = spentBudgets.copy(spentDailyBudget = 0L)
-                spentBudgetsRedisTemplate.opsForValue().set(key, updated)
-            }
-        }
-
-        log.info("일 소진액 초기화 완료 (Redis)")
-    }
 }
