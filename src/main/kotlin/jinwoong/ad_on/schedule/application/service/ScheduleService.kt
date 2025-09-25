@@ -61,18 +61,18 @@ class ScheduleService(
         val spentDailyBudget = scheduleDTO.spentDailyBudget ?: 0L
 
         val campaign = Campaign(
-            campaignId = scheduleDTO.campaignId,
+            id = scheduleDTO.campaignId,
             totalBudget = scheduleDTO.totalBudget,
             spentTotalBudget = spentTotalBudget
         )
 
         val adSet = AdSet(
-            adSetId = scheduleDTO.adSetId,
-            adSetStartDate = scheduleDTO.adSetStartDate,
-            adSetEndDate = scheduleDTO.adSetEndDate,
-            adSetStartTime = scheduleDTO.adSetStartTime,
-            adSetEndTime = scheduleDTO.adSetEndTime,
-            adSetStatus = Status.valueOf(scheduleDTO.adSetStatus),
+            id = scheduleDTO.adSetId,
+            startDate = scheduleDTO.adSetStartDate,
+            endDate = scheduleDTO.adSetEndDate,
+            startTime = scheduleDTO.adSetStartTime,
+            endTime = scheduleDTO.adSetEndTime,
+            status = Status.valueOf(scheduleDTO.adSetStatus),
             dailyBudget = scheduleDTO.dailyBudget,
             unitCost = scheduleDTO.unitCost,
             paymentType = PaymentType.valueOf(scheduleDTO.paymentType),
@@ -80,8 +80,8 @@ class ScheduleService(
         )
 
         val creative = Creative(
-            creativeId = scheduleDTO.creativeId,
-            creativeStatus = Status.valueOf(scheduleDTO.creativeStatus),
+            id = scheduleDTO.creativeId,
+            status = Status.valueOf(scheduleDTO.creativeStatus),
             landingUrl = scheduleDTO.landingUrl,
             look = Look(
                 imageURL = scheduleDTO.creativeImage,
@@ -129,8 +129,8 @@ class ScheduleService(
      */
     @Transactional(readOnly = true)
     fun getSchedulesToUpdate(schedule: Schedule): List<Schedule> =
-        scheduleRepository.findAllByCampaignId(schedule.campaign.campaignId)
-            .union(scheduleRepository.findAllByAdSetId(schedule.adSet.adSetId))
+        scheduleRepository.findAllByCampaignId(schedule.campaign.id)
+            .union(scheduleRepository.findAllByAdSetId(schedule.adSet.id))
             .distinctBy { it.id }
             .filter { it.hasToPay() }
             .toList()

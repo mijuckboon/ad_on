@@ -34,7 +34,7 @@ class Schedule(
     }
 
     fun isActiveByTime(currentTime: LocalTime): Boolean {
-        return currentTime in adSet.adSetStartTime..adSet.adSetEndTime
+        return currentTime in adSet.startTime..adSet.endTime
     }
 
     /* update */
@@ -49,18 +49,18 @@ class Schedule(
             adSet.updateDailyBudget(it)
         }
 
-        adSet.adSetStartDate = adSetDTO.adSetStartDate ?: adSet.adSetStartDate
-        adSet.adSetStartTime = adSetDTO.adSetStartTime ?: adSet.adSetStartTime
-        adSet.adSetEndDate = adSetDTO.adSetEndDate ?: adSet.adSetEndDate
-        adSet.adSetEndTime = adSetDTO.adSetEndTime ?: adSet.adSetEndTime
-        adSet.adSetStatus = adSetDTO.adSetStatus ?: adSet.adSetStatus
+        adSet.startDate = adSetDTO.adSetStartDate ?: adSet.startDate
+        adSet.startTime = adSetDTO.adSetStartTime ?: adSet.startTime
+        adSet.endDate = adSetDTO.adSetEndDate ?: adSet.endDate
+        adSet.endTime = adSetDTO.adSetEndTime ?: adSet.endTime
+        adSet.status = adSetDTO.adSetStatus ?: adSet.status
         adSet.paymentType = adSetDTO.paymentType ?: adSet.paymentType
         adSet.unitCost = adSetDTO.unitCost ?: adSet.unitCost
     }
 
     fun updateCreative(creativeDTO: CreativeDTO) {
         creative.landingUrl = creativeDTO.landingUrl ?: creative.landingUrl
-        creative.creativeStatus = creativeDTO.creativeStatus ?: creative.creativeStatus
+        creative.status = creativeDTO.creativeStatus ?: creative.status
         creative.look.imageURL = creativeDTO.creativeImage
         creative.look.movieURL = creativeDTO.creativeMovie
         creative.look.logoURL = creativeDTO.creativeLogo

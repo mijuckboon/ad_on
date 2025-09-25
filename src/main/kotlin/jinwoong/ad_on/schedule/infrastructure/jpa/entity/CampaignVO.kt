@@ -6,7 +6,7 @@ import jakarta.persistence.Embeddable
 @Embeddable
 data class CampaignVO(
     @Column(name = "campaign_id", nullable = false)
-    var campaignId: Long,
+    var id: Long,
 
     @Column(name = "total_budget", nullable = false)
     var totalBudget: Long,

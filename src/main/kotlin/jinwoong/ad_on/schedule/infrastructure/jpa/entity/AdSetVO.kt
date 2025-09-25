@@ -12,23 +12,23 @@ import java.time.LocalTime
 @Embeddable
 data class AdSetVO(
     @Column(name = "ad_set_id", nullable = false)
-    var adSetId: Long,
+    var id: Long,
 
     @Column(name = "ad_set_start_date", nullable = false)
-    var adSetStartDate: LocalDate,
+    var startDate: LocalDate,
 
     @Column(name = "ad_set_end_date", nullable = false)
-    var adSetEndDate: LocalDate,
+    var endDate: LocalDate,
 
     @Column(name = "ad_set_start_time", nullable = false)
-    var adSetStartTime: LocalTime,
+    var startTime: LocalTime,
 
     @Column(name = "ad_set_end_time", nullable = false)
-    var adSetEndTime: LocalTime,
+    var endTime: LocalTime,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ad_set_status", nullable = false)
-    var adSetStatus: Status,
+    var status: Status,
 
     @Column(name = "daily_budget", nullable = false)
     var dailyBudget: Long,

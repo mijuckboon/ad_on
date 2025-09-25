@@ -17,19 +17,19 @@ class ScheduleEntity(
 
     @Embedded
     @AttributeOverrides(
-        AttributeOverride(name = "campaignId", column = Column(table = "campaign", name = "campaign_id")),
+        AttributeOverride(name = "id", column = Column(table = "campaign", name = "campaign_id")),
         AttributeOverride(name = "totalBudget", column = Column(table = "campaign", name = "total_budget")),
     )
     var campaign: CampaignVO,
 
     @Embedded
     @AttributeOverrides(
-        AttributeOverride(name = "adSetId", column = Column(table = "ad_set", name = "ad_set_id")),
-        AttributeOverride(name = "adSetStartDate", column = Column(table = "ad_set", name = "ad_set_start_date")),
-        AttributeOverride(name = "adSetEndDate", column = Column(table = "ad_set", name = "ad_set_end_date")),
-        AttributeOverride(name = "adSetStartTime", column = Column(table = "ad_set", name = "ad_set_start_time")),
-        AttributeOverride(name = "adSetEndTime", column = Column(table = "ad_set", name = "ad_set_end_time")),
-        AttributeOverride(name = "adSetStatus", column = Column(table = "ad_set", name = "ad_set_status")),
+        AttributeOverride(name = "id", column = Column(table = "ad_set", name = "ad_set_id")),
+        AttributeOverride(name = "startDate", column = Column(table = "ad_set", name = "ad_set_start_date")),
+        AttributeOverride(name = "endDate", column = Column(table = "ad_set", name = "ad_set_end_date")),
+        AttributeOverride(name = "startTime", column = Column(table = "ad_set", name = "ad_set_start_time")),
+        AttributeOverride(name = "endTime", column = Column(table = "ad_set", name = "ad_set_end_time")),
+        AttributeOverride(name = "status", column = Column(table = "ad_set", name = "ad_set_status")),
         AttributeOverride(name = "dailyBudget", column = Column(table = "ad_set", name = "daily_budget")),
         AttributeOverride(name = "paymentType", column = Column(table = "ad_set", name = "payment_type")),
         AttributeOverride(name = "unitCost", column = Column(table = "ad_set", name = "unit_cost"))
@@ -38,9 +38,9 @@ class ScheduleEntity(
 
     @Embedded
     @AttributeOverrides(
-        AttributeOverride(name = "creativeId", column = Column(table = "creative", name = "creative_id")),
+        AttributeOverride(name = "id", column = Column(table = "creative", name = "creative_id")),
         AttributeOverride(name = "landingUrl", column = Column(table = "creative", name = "landing_url")),
-        AttributeOverride(name = "creativeStatus", column = Column(table = "creative", name = "creative_status")),
+        AttributeOverride(name = "status", column = Column(table = "creative", name = "creative_status")),
         AttributeOverride(
             name = "look.creativeImage",
             column = Column(table = "creative", name = "creative_image")

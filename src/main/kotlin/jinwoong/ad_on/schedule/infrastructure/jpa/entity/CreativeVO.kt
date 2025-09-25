@@ -6,7 +6,7 @@ import jinwoong.ad_on.schedule.domain.aggregate.Status
 @Embeddable
 data class CreativeVO(
     @Column(name = "creative_id", nullable = false)
-    var creativeId: Long,
+    var id: Long,
 
     @Embedded
     var look: LookVO,
@@ -16,5 +16,5 @@ data class CreativeVO(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "creative_status", nullable = false)
-    var creativeStatus: Status,
+    var status: Status,
 )

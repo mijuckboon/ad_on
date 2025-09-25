@@ -6,12 +6,12 @@ import java.time.LocalTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
 data class AdSet(
-    var adSetId: Long,
-    var adSetStartDate: LocalDate,
-    var adSetEndDate: LocalDate,
-    var adSetStartTime: LocalTime,
-    var adSetEndTime: LocalTime,
-    var adSetStatus: Status,
+    var id: Long,
+    var startDate: LocalDate,
+    var endDate: LocalDate,
+    var startTime: LocalTime,
+    var endTime: LocalTime,
+    var status: Status,
     var dailyBudget: Long,
     var paymentType: PaymentType,
     var unitCost: Long = 0L,

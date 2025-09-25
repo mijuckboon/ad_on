@@ -53,27 +53,27 @@ class ScheduleMapper(
 
         /* domain to JPA */
         private fun Campaign.toEntity(): CampaignVO = CampaignVO(
-            campaignId = this.campaignId,
+            id = this.id,
             totalBudget = this.totalBudget
         )
 
         private fun AdSet.toEntity(): AdSetVO = AdSetVO(
-            adSetId = this.adSetId,
-            adSetStartDate = this.adSetStartDate,
-            adSetEndDate = this.adSetEndDate,
-            adSetStartTime = this.adSetStartTime,
-            adSetEndTime = this.adSetEndTime,
-            adSetStatus = this.adSetStatus,
+            id = this.id,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            startTime = this.startTime,
+            endTime = this.endTime,
+            status = this.status,
             dailyBudget = this.dailyBudget,
             paymentType = this.paymentType,
             unitCost = this.unitCost
         )
 
         private fun Creative.toEntity(): CreativeVO = CreativeVO(
-            creativeId = this.creativeId,
+            id = this.id,
             look = this.look.toEntity(),
             landingUrl = this.landingUrl,
-            creativeStatus = this.creativeStatus
+            status = this.status
         )
 
         private fun Look.toEntity(): LookVO = LookVO(
@@ -86,18 +86,18 @@ class ScheduleMapper(
 
         /* JPA to domain */
         private fun CampaignVO.toDomain(spentTotalBudget: Long = 0L): Campaign = Campaign(
-            campaignId = this.campaignId,
+            id = this.id,
             totalBudget = this.totalBudget,
             spentTotalBudget = spentTotalBudget
         )
 
         private fun AdSetVO.toDomain(spentDailyBudget: Long = 0L): AdSet = AdSet(
-            adSetId = this.adSetId,
-            adSetStartDate = this.adSetStartDate,
-            adSetEndDate = this.adSetEndDate,
-            adSetStartTime = this.adSetStartTime,
-            adSetEndTime = this.adSetEndTime,
-            adSetStatus = this.adSetStatus,
+            id = this.id,
+            startDate = this.startDate,
+            endDate = this.endDate,
+            startTime = this.startTime,
+            endTime = this.endTime,
+            status = this.status,
             dailyBudget = this.dailyBudget,
             paymentType = this.paymentType,
             unitCost = this.unitCost,
@@ -105,10 +105,10 @@ class ScheduleMapper(
         )
 
         private fun CreativeVO.toDomain(): Creative = Creative(
-            creativeId = this.creativeId,
+            id = this.id,
             look = this.look.toDomain(),
             landingUrl = this.landingUrl,
-            creativeStatus = this.creativeStatus
+            status = this.status
         )
 
         private fun LookVO.toDomain(): Look = Look(

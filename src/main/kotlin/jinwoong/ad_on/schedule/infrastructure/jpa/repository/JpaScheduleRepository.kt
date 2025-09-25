@@ -12,10 +12,10 @@ interface JpaScheduleRepository: JpaRepository<ScheduleEntity, Long> {
     @Query(
         """
     SELECT s FROM ScheduleEntity s
-    WHERE s.adSet.adSetStartDate <= :today
-      AND s.adSet.adSetEndDate >= :today
-      AND s.adSet.adSetStatus = 'ON'
-      AND s.creative.creativeStatus = 'ON'
+    WHERE s.adSet.startDate <= :today
+      AND s.adSet.endDate >= :today
+      AND s.adSet.status = 'ON'
+      AND s.creative.status = 'ON'
 """
     )
     fun findCandidates(today: LocalDate): List<ScheduleEntity>
@@ -23,7 +23,7 @@ interface JpaScheduleRepository: JpaRepository<ScheduleEntity, Long> {
     @Query(
         """
     SELECT s FROM ScheduleEntity s
-    WHERE s.campaign.campaignId = :campaignId
+    WHERE s.campaign.id = :campaignId
 """
     )
     fun findAllByCampaignId(campaignId: Long): List<ScheduleEntity>
@@ -31,7 +31,7 @@ interface JpaScheduleRepository: JpaRepository<ScheduleEntity, Long> {
     @Query(
         """
     SELECT s FROM ScheduleEntity s
-    WHERE s.adSet.adSetId = :adSetId
+    WHERE s.adSet.id = :adSetId
 """
     )
     fun findAllByAdSetId(adSetId: Long): List<ScheduleEntity>
@@ -39,7 +39,7 @@ interface JpaScheduleRepository: JpaRepository<ScheduleEntity, Long> {
     @Query(
         """
     SELECT s FROM ScheduleEntity s
-    WHERE s.creative.creativeId = :creativeId
+    WHERE s.creative.id = :creativeId
 """
     )
     fun findAllByCreativeId(creativeId: Long): List<ScheduleEntity>
