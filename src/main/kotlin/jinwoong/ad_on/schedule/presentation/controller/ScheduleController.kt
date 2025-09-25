@@ -4,7 +4,8 @@ import jinwoong.ad_on.api.ApiResponse
 import jinwoong.ad_on.schedule.application.service.AdServeService
 import jinwoong.ad_on.schedule.application.service.ScheduleService
 import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
-import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleUpdateRequest
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.ScheduleUpdateRequest as ScheduleUpdateRequestv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.ScheduleUpdateRequest as ScheduleUpdateRequestv2
 import jinwoong.ad_on.schedule.presentation.dto.response.AdServeResponse
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleSaveResponse
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleUpdateResponse
@@ -42,7 +43,16 @@ class ScheduleController(
     }
 
     @PutMapping
-    fun updateSchedules(@RequestBody scheduleUpdateRequest: ScheduleUpdateRequest): ResponseEntity<ApiResponse<ScheduleUpdateResponse>> {
+    fun updateSchedules(@RequestBody scheduleUpdateRequest: ScheduleUpdateRequestv1): ResponseEntity<ApiResponse<ScheduleUpdateResponse>> {
+        val response = scheduleService.updateSchedules(scheduleUpdateRequest = scheduleUpdateRequest)
+
+        return ResponseEntity.ok(
+            ApiResponse.success(data = response)
+        )
+    }
+
+    @PutMapping("/v2")
+    fun updateSchedules(@RequestBody scheduleUpdateRequest: ScheduleUpdateRequestv2): ResponseEntity<ApiResponse<ScheduleUpdateResponse>> {
         val response = scheduleService.updateSchedules(scheduleUpdateRequest = scheduleUpdateRequest)
 
         return ResponseEntity.ok(

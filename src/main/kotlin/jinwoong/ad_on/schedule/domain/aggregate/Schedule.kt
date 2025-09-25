@@ -1,9 +1,12 @@
 package jinwoong.ad_on.schedule.domain.aggregate
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import jinwoong.ad_on.schedule.presentation.dto.request.AdSetDTO
-import jinwoong.ad_on.schedule.presentation.dto.request.CampaignDTO
-import jinwoong.ad_on.schedule.presentation.dto.request.CreativeDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.AdSetDTO as AdSetDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.CampaignDTO as CampaignDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.CreativeDTO as CreativeDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.AdSetDTO as AdSetDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.CampaignDTO as CampaignDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.CreativeDTO as CreativeDTOv2
 import java.time.LocalTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
@@ -38,13 +41,13 @@ class Schedule(
     }
 
     /* update */
-    fun updateCampaign(campaignDTO: CampaignDTO) {
+    fun updateCampaign(campaignDTO: CampaignDTOv1) {
         campaignDTO.totalBudget?.let {
             campaign.updateTotalBudget(it)
         }
     }
 
-    fun updateAdSet(adSetDTO: AdSetDTO) {
+    fun updateAdSet(adSetDTO: AdSetDTOv1) {
         adSetDTO.dailyBudget?.let {
             adSet.updateDailyBudget(it)
         }
@@ -58,12 +61,42 @@ class Schedule(
         adSet.unitCost = adSetDTO.unitCost ?: adSet.unitCost
     }
 
-    fun updateCreative(creativeDTO: CreativeDTO) {
+    fun updateCreative(creativeDTO: CreativeDTOv1) {
         creative.landingUrl = creativeDTO.landingUrl ?: creative.landingUrl
         creative.status = creativeDTO.creativeStatus ?: creative.status
         creative.look.imageURL = creativeDTO.creativeImage
         creative.look.movieURL = creativeDTO.creativeMovie
         creative.look.logoURL = creativeDTO.creativeLogo
+        creative.look.copyrightingTitle = creativeDTO.copyrightingTitle
+        creative.look.copyrightingSubtitle = creativeDTO.copyrightingSubtitle
+    }
+
+    fun updateCampaign(campaignDTO: CampaignDTOv2) {
+        campaignDTO.totalBudget?.let {
+            campaign.updateTotalBudget(it)
+        }
+    }
+
+    fun updateAdSet(adSetDTO: AdSetDTOv2) {
+        adSetDTO.dailyBudget?.let {
+            adSet.updateDailyBudget(it)
+        }
+
+        adSet.startDate = adSetDTO.startDate ?: adSet.startDate
+        adSet.startTime = adSetDTO.startTime ?: adSet.startTime
+        adSet.endDate = adSetDTO.endDate ?: adSet.endDate
+        adSet.endTime = adSetDTO.endTime ?: adSet.endTime
+        adSet.status = adSetDTO.status ?: adSet.status
+        adSet.paymentType = adSetDTO.paymentType ?: adSet.paymentType
+        adSet.unitCost = adSetDTO.unitCost ?: adSet.unitCost
+    }
+
+    fun updateCreative(creativeDTO: CreativeDTOv2) {
+        creative.landingUrl = creativeDTO.landingUrl ?: creative.landingUrl
+        creative.status = creativeDTO.creativeStatus ?: creative.status
+        creative.look.imageURL = creativeDTO.imageURL
+        creative.look.movieURL = creativeDTO.movieURL
+        creative.look.logoURL = creativeDTO.logoURL
         creative.look.copyrightingTitle = creativeDTO.copyrightingTitle
         creative.look.copyrightingSubtitle = creativeDTO.copyrightingSubtitle
     }

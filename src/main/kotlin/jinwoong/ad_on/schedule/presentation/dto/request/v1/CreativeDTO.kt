@@ -1,4 +1,4 @@
-package jinwoong.ad_on.schedule.presentation.dto.request
+package jinwoong.ad_on.schedule.presentation.dto.request.v1
 
 import jinwoong.ad_on.schedule.domain.aggregate.Status
 
