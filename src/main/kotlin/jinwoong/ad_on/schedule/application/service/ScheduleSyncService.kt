@@ -8,8 +8,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.concurrent.TimeUnit
 
 @Service
 class ScheduleSyncService(
@@ -21,6 +23,7 @@ class ScheduleSyncService(
     companion object {
         private val log = LoggerFactory.getLogger(ScheduleSyncService::class.java)
         const val CACHE_INTERVAL_IN_MILISEC = 5 * 60 * 1000L // 5분
+        const val TTL_IN_MINUTE = 6L // Time To Live
     }
 
     /**
@@ -37,10 +40,7 @@ class ScheduleSyncService(
         val candidates = getCandidatesFromDB(today)
         val filteredCandidates = filterCandidates(candidates, currentTime)
 
-        val candidateScanPattern = ScheduleRedisKey.CANDIDATE_V1.scanPattern
-
-        // 기존 캐시 초기화
-        scheduleRedisTemplate.delete(scheduleRedisTemplate.keys(candidateScanPattern))
+        val ttlInMinute = TTL_IN_MINUTE
 
         // budget 정보를 candidate에 반영
         filteredCandidates.forEach { schedule ->
@@ -60,7 +60,7 @@ class ScheduleSyncService(
             schedule.adSet.spentDailyBudget = spentDailyBudget
 
             val candidateKey = ScheduleRedisKey.CANDIDATE_V1.key(id)
-            scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
+            scheduleRedisTemplate.opsForValue().set(candidateKey, schedule, ttlInMinute, TimeUnit.MINUTES)
         }
         log.info("캐시 갱신 완료, count: ${filteredCandidates.size}")
     }
@@ -72,6 +72,7 @@ class ScheduleSyncService(
         return keys.mapNotNull { scheduleRedisTemplate.opsForValue().get(it) }
     }
 
+    @Transactional(readOnly = true)
     fun getCandidatesFromDB(today: LocalDate): List<Schedule> {
         /* DB 조회: 비교적 실시간성이 낮은 값을 미리 필터링 */
         return scheduleRepository.findCandidates(today)
@@ -92,17 +93,35 @@ class ScheduleSyncService(
      * Candidate Redis 캐싱
      */
     fun updateBudgetsOfCandidates(schedules: List<Schedule>) {
-        schedules.forEach { scheduleRedisTemplate.opsForValue().set(ScheduleRedisKey.CANDIDATE_V1.key(it.id!!), it) }
+        schedules.forEach {
+            scheduleRedisTemplate.opsForValue().set(
+                ScheduleRedisKey.CANDIDATE_V1.key(it.id!!), it, TTL_IN_MINUTE, TimeUnit.MINUTES
+            )
+        }
     }
 
     private fun syncCandidateInRedis(schedule: Schedule) {
         val candidateKey = ScheduleRedisKey.CANDIDATE_V1.key(schedule.id!!)
-        scheduleRedisTemplate.opsForValue().set(candidateKey, schedule)
+        scheduleRedisTemplate.opsForValue().set(
+            candidateKey, schedule, TTL_IN_MINUTE, TimeUnit.MINUTES
+        )
     }
 
     fun syncCandidatesInRedis(schedules: List<Schedule>) {
         schedules.forEach {
             syncCandidateInRedis(it)
+        }
+    }
+
+    fun resetSpentDailyBudgetsOfCandidates() {
+        val candidateScanPattern = ScheduleRedisKey.CANDIDATE_V1.scanPattern
+        val candidateKeys = scheduleRedisTemplate.keys(candidateScanPattern)
+        candidateKeys.forEach { key ->
+            val schedule = scheduleRedisTemplate.opsForValue().get(key)
+            if (schedule != null) {
+                schedule.adSet.spentDailyBudget = 0L
+                scheduleRedisTemplate.opsForValue().set(key, schedule, TTL_IN_MINUTE, TimeUnit.MINUTES)
+            }
         }
     }
 

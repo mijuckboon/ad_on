@@ -15,9 +15,7 @@ class BudgetService(
     private val spentBudgetLongRedisTemplate: RedisTemplate<String, Long>,
     private val scheduleSyncService: ScheduleSyncService,
     private val scheduleService: ScheduleService,
-    private val scheduleRedisTemplate: RedisTemplate<String, Schedule>,
-
-    ) {
+) {
     companion object {
         private val log = LoggerFactory.getLogger(BudgetService::class.java)
         const val CRON_EXPRESSION_FOR_MIDNIGHT = "0 0 0 * * *"
@@ -96,28 +94,16 @@ class BudgetService(
 
     @Scheduled(cron = CRON_EXPRESSION_FOR_MIDNIGHT)
     fun resetSpentDailyBudgetsInRedis() {
-        resetSpentDailyBudgetKeys()
-        resetSpentDailyBudgetsOfCandidates()
+        resetSpentDailyBudgetValues()
+        scheduleSyncService.resetSpentDailyBudgetsOfCandidates()
         log.info("일 소진액 초기화 완료 (Redis)")
     }
 
-    private fun resetSpentDailyBudgetKeys() {
+    private fun resetSpentDailyBudgetValues() {
         val spentDailyBudgetsScanPattern = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.scanPattern
         val spentDailyBudgetKeys = spentBudgetLongRedisTemplate.keys(spentDailyBudgetsScanPattern)
         spentDailyBudgetKeys.forEach { key ->
             spentBudgetLongRedisTemplate.opsForValue().set(key, 0L)
-        }
-    }
-
-    private fun resetSpentDailyBudgetsOfCandidates() {
-        val candidateScanPattern = ScheduleRedisKey.CANDIDATE_V1.scanPattern
-        val candidateKeys = scheduleRedisTemplate.keys(candidateScanPattern)
-        candidateKeys.forEach { key ->
-            val schedule = scheduleRedisTemplate.opsForValue().get(key)
-            if (schedule != null) {
-                schedule.adSet.spentDailyBudget = 0L
-                scheduleRedisTemplate.opsForValue().set(key, schedule)
-            }
         }
     }
 
