@@ -3,24 +3,27 @@ package jinwoong.ad_on.schedule.application.service
 import jinwoong.ad_on.exception.BusinessException
 import jinwoong.ad_on.exception.ErrorCode
 import jinwoong.ad_on.schedule.application.mapper.toDomain
-import jinwoong.ad_on.schedule.domain.aggregate.*
+import jinwoong.ad_on.schedule.domain.aggregate.Schedule
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.infrastructure.redis.ScheduleRedisKey
-import jinwoong.ad_on.schedule.presentation.dto.request.*
-import jinwoong.ad_on.schedule.presentation.dto.request.v1.ScheduleUpdateRequest as ScheduleUpdateRequestv1
-import jinwoong.ad_on.schedule.presentation.dto.request.v1.AdSetDTO as AdSetDTOv1
-import jinwoong.ad_on.schedule.presentation.dto.request.v1.CampaignDTO as CampaignDTOv1
-import jinwoong.ad_on.schedule.presentation.dto.request.v1.CreativeDTO as CreativeDTOv1
-import jinwoong.ad_on.schedule.presentation.dto.request.v2.ScheduleUpdateRequest as ScheduleUpdateRequestv2
-import jinwoong.ad_on.schedule.presentation.dto.request.v2.AdSetDTO as AdSetDTOv2
-import jinwoong.ad_on.schedule.presentation.dto.request.v2.CampaignDTO as CampaignDTOv2
-import jinwoong.ad_on.schedule.presentation.dto.request.v2.CreativeDTO as CreativeDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleSaveResponse
 import jinwoong.ad_on.schedule.presentation.dto.response.ScheduleUpdateResponse
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.AdSetDTO as AdSetDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.CampaignDTO as CampaignDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.CreativeDTO as CreativeDTOv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.ScheduleUpdateRequest as ScheduleUpdateRequestv1
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.AdSetDTO as AdSetDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.CampaignDTO as CampaignDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.CreativeDTO as CreativeDTOv2
+import jinwoong.ad_on.schedule.presentation.dto.request.v2.ScheduleUpdateRequest as ScheduleUpdateRequestv2
 
 @Service
 class ScheduleService(
@@ -32,11 +35,15 @@ class ScheduleService(
         private val log = LoggerFactory.getLogger(ScheduleService::class.java)
     }
 
+    @Lazy
+    @Autowired
+    lateinit var scheduleServiceProxy: ScheduleService
+
     /**
      * 광고 플랫폼 서버가 전파하는 광고 정보를 저장
      */
     fun createSchedules(scheduleSaveRequest: ScheduleSaveRequest): ScheduleSaveResponse {
-        val savedIds = createSchedulesInDB(scheduleSaveRequest)
+        val savedIds = scheduleServiceProxy.createSchedulesInDB(scheduleSaveRequest)
         createBudgetCache(scheduleSaveRequest.schedules, savedIds)
         log.info("스케줄 생성 완료, count: ${savedIds.size}")
         return ScheduleSaveResponse(savedIds)
@@ -66,7 +73,7 @@ class ScheduleService(
     }
 
     fun updateSchedules(scheduleUpdateRequest: ScheduleUpdateRequestv1): ScheduleUpdateResponse {
-        val schedulesToUpdate = updateSchedulesInDB(scheduleUpdateRequest)
+        val schedulesToUpdate = scheduleServiceProxy.updateSchedulesInDB(scheduleUpdateRequest)
 
         val schedulesToSync = getSchedulesToSync(schedulesToUpdate)
         scheduleSyncService.syncCandidatesInRedis(schedulesToSync)
@@ -77,7 +84,7 @@ class ScheduleService(
     }
 
     fun updateSchedules(scheduleUpdateRequest: ScheduleUpdateRequestv2): ScheduleUpdateResponse {
-        val schedulesToUpdate = updateSchedulesInDB(scheduleUpdateRequest)
+        val schedulesToUpdate = scheduleServiceProxy.updateSchedulesInDB(scheduleUpdateRequest)
 
         val schedulesToSync = getSchedulesToSync(schedulesToUpdate)
         scheduleSyncService.syncCandidatesInRedis(schedulesToSync)

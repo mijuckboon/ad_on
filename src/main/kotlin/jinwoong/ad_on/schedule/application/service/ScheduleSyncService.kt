@@ -5,6 +5,8 @@ import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.infrastructure.redis.ScheduleRedisKey
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -26,6 +28,10 @@ class ScheduleSyncService(
         const val TTL_IN_MINUTE = 6L // Time To Live
     }
 
+    @Lazy
+    @Autowired
+    lateinit var scheduleSyncServiceProxy: ScheduleSyncService
+
     /**
      * 서빙 가능한 광고를 Redis에 캐싱
      */
@@ -37,7 +43,7 @@ class ScheduleSyncService(
     }
 
     fun cacheCandidates(today: LocalDate, currentTime: LocalTime) {
-        val candidates = getCandidatesFromDB(today)
+        val candidates = scheduleSyncServiceProxy.getCandidatesFromDB(today)
         val filteredCandidates = filterCandidates(candidates, currentTime)
 
         val ttlInMinute = TTL_IN_MINUTE
