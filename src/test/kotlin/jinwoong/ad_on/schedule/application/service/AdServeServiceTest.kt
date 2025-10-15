@@ -30,37 +30,42 @@ class AdServeServiceTest {
     lateinit var scheduleRepository: ScheduleRepository
     @Mock
     lateinit var valueOperations: ValueOperations<String, SpentBudgets>
+    @Mock
+    lateinit var budgetService: BudgetService
 
     private lateinit var adServeService: AdServeService
 
     @BeforeEach
     fun setup() {
         whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(valueOperations)
-        adServeService = AdServeService(scheduleSyncService, spentBudgetsRedisTemplate, scheduleRepository)
+        adServeService = AdServeService(
+            scheduleSyncService = scheduleSyncService,
+            budgetService = budgetService
+        )
     }
 
     /** Schedule 생성 (mock 대신 실제 객체) */
     private fun createSchedule(id: Long, unitCost: Long = 100L): Schedule {
         val campaign = Campaign(
-            campaignId = id,
+            id = id,
             totalBudget = 1000L,
             spentTotalBudget = 0L
         )
         val adSet = AdSet(
-            adSetId = id,
-            adSetStartDate = LocalDate.now(),
-            adSetEndDate = LocalDate.now().plusDays(1),
-            adSetStartTime = LocalTime.MIN,
-            adSetEndTime = LocalTime.MAX,
-            adSetStatus = Status.ON,
+            id = id,
+            startDate = LocalDate.now(),
+            endDate = LocalDate.now().plusDays(1),
+            startTime = LocalTime.MIN,
+            endTime = LocalTime.MAX,
+            status = Status.ON,
             dailyBudget = 500L,
             unitCost = unitCost,
             paymentType = PaymentType.CPC,
             spentDailyBudget = 0L
         )
         val creative = Creative(
-            creativeId = id,
-            creativeStatus = Status.ON,
+            id = id,
+            status = Status.ON,
             landingUrl = "http://example.com",
             look = Look(
                 imageURL = "http://image.com",
@@ -109,7 +114,7 @@ class AdServeServiceTest {
         whenever(scheduleSyncService.getFilteredCandidatesFromRedis(any())).thenReturn(schedules)
 
         // when
-        adServeService.updateBudgetAfterServe(schedules[0], LocalTime.now())
+        budgetService.updateBudgetAfterServe(schedules[0], LocalTime.now())
 
         // then
         schedules.forEachIndexed { index, schedule ->

@@ -4,6 +4,8 @@ import jinwoong.ad_on.schedule.domain.aggregate.*
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
 import jinwoong.ad_on.schedule.presentation.dto.request.*
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.CampaignDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.v1.ScheduleUpdateRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,9 +16,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 class ScheduleServiceTest {
-
     private val scheduleRepository: ScheduleRepository = mock()
-    private val redisTemplate: RedisTemplate<String, SpentBudgets> = mock()
+    private val spentBudgetLongRedisTemplate: RedisTemplate<String, Long> = mock()
     private val valueOps: ValueOperations<String, SpentBudgets> = mock()
     private val scheduleSyncService: ScheduleSyncService = mock()
 
@@ -24,8 +25,7 @@ class ScheduleServiceTest {
 
     @BeforeEach
     fun setUp() {
-        whenever(redisTemplate.opsForValue()).thenReturn(valueOps)
-        scheduleService = ScheduleService(scheduleRepository, redisTemplate, scheduleSyncService)
+        scheduleService = ScheduleService(scheduleRepository, scheduleSyncService, spentBudgetLongRedisTemplate)
     }
 
     @Test
@@ -73,25 +73,25 @@ class ScheduleServiceTest {
     private fun createSavedSchedule(id: Long): Schedule =
         Schedule(
             campaign = Campaign(
-                campaignId = 1L,
+                id = 1L,
                 totalBudget = 1000L,
                 spentTotalBudget = 100L
             ),
             adSet = AdSet(
-                adSetId = 2L,
-                adSetStartDate = LocalDate.parse("2025-09-01"),
-                adSetEndDate = LocalDate.parse("2025-09-30"),
-                adSetStartTime = LocalTime.parse("00:00"),
-                adSetEndTime = LocalTime.parse("23:59"),
-                adSetStatus = Status.ON,
+                id = 2L,
+                startDate = LocalDate.parse("2025-09-01"),
+                endDate = LocalDate.parse("2025-09-30"),
+                startTime = LocalTime.parse("00:00"),
+                endTime = LocalTime.parse("23:59"),
+                status = Status.ON,
                 dailyBudget = 500L,
                 unitCost = 10L,
                 paymentType = PaymentType.CPC,
                 spentDailyBudget = 50L
             ),
             creative = Creative(
-                creativeId = 3L,
-                creativeStatus = Status.ON,
+                id = 3L,
+                status = Status.ON,
                 landingUrl = "http://test.com",
                 look = Look(
                     imageURL = "img.png",

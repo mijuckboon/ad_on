@@ -32,14 +32,17 @@ class ScheduleSyncServiceTest {
     lateinit var scheduleValueOps: ValueOperations<String, Schedule>
     @Mock
     lateinit var spentValueOps: ValueOperations<String, SpentBudgets>
+    @Mock
+    lateinit var spentBudgetLongRedisTemplate: RedisTemplate<String, Long>
+    @Mock
+    lateinit var scheduleSyncService: ScheduleSyncService
 
-    private lateinit var scheduleSyncService: ScheduleSyncService
 
     @BeforeEach
     fun setup() {
         whenever(scheduleRedisTemplate.opsForValue()).thenReturn(scheduleValueOps)
         whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentValueOps)
-        scheduleSyncService = ScheduleSyncService(scheduleRedisTemplate, spentBudgetsRedisTemplate, scheduleRepository)
+        scheduleSyncService = ScheduleSyncService(scheduleRedisTemplate, spentBudgetsRedisTemplate, scheduleRepository, spentBudgetLongRedisTemplate)
     }
 
     /**------------------ TESTS ------------------*/
@@ -114,39 +117,40 @@ class ScheduleSyncServiceTest {
         verify(scheduleValueOps).set(eq("candidate:schedule:5"), eq(schedule2))
     }
 
-    @Test
-    fun resetSpentDailyBudgetsInRedisTest() {
-        val schedule = createSchedule(6)
-        val spent = SpentBudgets(6, spentTotalBudget = 100, spentDailyBudget = 50)
-
-        whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:6"))
-        whenever(scheduleValueOps.get("candidate:schedule:6")).thenReturn(schedule)
-        whenever(spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")).thenReturn(setOf("spentBudgets:schedule:6"))
-        whenever(spentValueOps.get("spentBudgets:schedule:6")).thenReturn(spent)
-
-        scheduleSyncService.resetSpentDailyBudgetsInRedis()
-
-        assertEquals(0L, schedule.adSet.spentDailyBudget)
-        verify(scheduleValueOps).set(eq("candidate:schedule:6"), eq(schedule))
-        verify(spentValueOps).set(eq("spentBudgets:schedule:6"), check {
-            assertEquals(0L, it.spentDailyBudget)
-        })
-    }
+// BudgetService로
+//    @Test
+//    fun resetSpentDailyBudgetsInRedisTest() {
+//        val schedule = createSchedule(6)
+//        val spent = SpentBudgets(6, spentTotalBudget = 100, spentDailyBudget = 50)
+//
+//        whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:6"))
+//        whenever(scheduleValueOps.get("candidate:schedule:6")).thenReturn(schedule)
+//        whenever(spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")).thenReturn(setOf("spentBudgets:schedule:6"))
+//        whenever(spentValueOps.get("spentBudgets:schedule:6")).thenReturn(spent)
+//
+//        resetSpentDailyBudgetsInRedis()
+//
+//        assertEquals(0L, schedule.adSet.spentDailyBudget)
+//        verify(scheduleValueOps).set(eq("candidate:schedule:6"), eq(schedule))
+//        verify(spentValueOps).set(eq("spentBudgets:schedule:6"), check {
+//            assertEquals(0L, it.spentDailyBudget)
+//        })
+//    }
 
     private fun createSchedule(id: Long, totalBudget: Long = 1000L, dailyBudget: Long = 100L): Schedule {
         val campaign = Campaign(
-            campaignId = id,
+            id = id,
             totalBudget = totalBudget,
             spentTotalBudget = 0L
         )
 
         val adSet = AdSet(
-            adSetId = id,
-            adSetStartDate = LocalDate.now(),
-            adSetEndDate = LocalDate.now(),
-            adSetStartTime = LocalTime.MIN,
-            adSetEndTime = LocalTime.MAX,
-            adSetStatus = Status.ON,
+            id = id,
+            startDate = LocalDate.now(),
+            endDate = LocalDate.now(),
+            startTime = LocalTime.MIN,
+            endTime = LocalTime.MAX,
+            status = Status.ON,
             dailyBudget = dailyBudget,
             unitCost = 10L,
             paymentType = PaymentType.CPC,
@@ -154,8 +158,8 @@ class ScheduleSyncServiceTest {
         )
 
         val creative = Creative(
-            creativeId = id,
-            creativeStatus = Status.ON,
+            id = id,
+            status = Status.ON,
             landingUrl = "http://example.com",
             look = Look(
                 imageURL = "img.png",
