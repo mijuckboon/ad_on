@@ -23,23 +23,26 @@ class SpentBudgetsMigrationService(
      * 레거시 budget 데이터를 새로운 Redis 키로 이전
      */
     fun migrateSpentBudgets(batchSize: Int = 100) {
-        var cursor = ScanOptions.scanOptions()
+        val scanOptions = ScanOptions.scanOptions()
             .match(ScheduleRedisKey.LEGACY_SPENT_BUDGETS.scanPattern)
             .count(batchSize.toLong())
             .build()
 
-        val keysIterator = spentBudgetsRedisTemplate.keys(ScheduleRedisKey.LEGACY_SPENT_BUDGETS.scanPattern)?.iterator() ?: return
+        spentBudgetsRedisTemplate.execute { connection ->
+            connection.keyCommands().scan(scanOptions).use { cursor ->
+                while (cursor.hasNext()) {
+                    val currentCursor = cursor.next()
+                    val legacyKey = String(currentCursor) // ByteArray → String 변환
+                    val legacyBudget = spentBudgetsRedisTemplate.opsForValue().get(legacyKey) ?: return@use
 
-        while (keysIterator.hasNext()) {
-            val legacyKey = keysIterator.next()
-            val legacyBudget = spentBudgetsRedisTemplate.opsForValue().get(legacyKey) ?: continue
-            val scheduleId = legacyBudget.scheduleId
+                    val scheduleId = legacyBudget.scheduleId
+                    val newTotalKey = ScheduleRedisKey.SPENT_TOTAL_BUDGET_V1.key(scheduleId)
+                    val newDailyKey = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.key(scheduleId)
 
-            val newTotalKey = ScheduleRedisKey.SPENT_TOTAL_BUDGET_V1.key(scheduleId)
-            val newDailyKey = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.key(scheduleId)
-
-            spentBudgetLongRedisTemplate.opsForValue().setIfAbsent(newTotalKey, legacyBudget.spentTotalBudget)
-            spentBudgetLongRedisTemplate.opsForValue().setIfAbsent(newDailyKey, legacyBudget.spentDailyBudget)
+                    spentBudgetLongRedisTemplate.opsForValue().setIfAbsent(newTotalKey, legacyBudget.spentTotalBudget)
+                    spentBudgetLongRedisTemplate.opsForValue().setIfAbsent(newDailyKey, legacyBudget.spentDailyBudget)
+                }
+            }
         }
 
         log.info("기존 spent budgets 마이그레이션 완료 (batch)")
