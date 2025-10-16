@@ -42,7 +42,16 @@ class ScheduleSyncServiceTest {
     fun setup() {
         whenever(scheduleRedisTemplate.opsForValue()).thenReturn(scheduleValueOps)
         whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentValueOps)
-        scheduleSyncService = ScheduleSyncService(scheduleRedisTemplate, spentBudgetsRedisTemplate, scheduleRepository, spentBudgetLongRedisTemplate)
+
+        scheduleSyncService = ScheduleSyncService(
+                scheduleRedisTemplate,
+                spentBudgetsRedisTemplate,
+                scheduleRepository,
+                spentBudgetLongRedisTemplate
+            )
+
+        // self-invocation용 proxy 설정
+        scheduleSyncService.scheduleSyncServiceProxy = scheduleSyncService
     }
 
     /**------------------ TESTS ------------------*/
@@ -113,8 +122,18 @@ class ScheduleSyncServiceTest {
 
         scheduleSyncService.updateBudgetsOfCandidates(list)
 
-        verify(scheduleValueOps).set(eq("candidate:schedule:4"), eq(schedule1))
-        verify(scheduleValueOps).set(eq("candidate:schedule:5"), eq(schedule2))
+        verify(scheduleValueOps).set(
+            eq("candidate:schedule:4"),
+            eq(schedule1),
+            any<Long>(),
+            any()
+        )
+        verify(scheduleValueOps).set(
+            eq("candidate:schedule:5"),
+            eq(schedule2),
+            any<Long>(),
+            any()
+        )
     }
 
 // BudgetService로

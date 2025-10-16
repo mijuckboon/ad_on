@@ -2,8 +2,8 @@ package jinwoong.ad_on.schedule.application.service
 
 import jinwoong.ad_on.schedule.domain.aggregate.*
 import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
-import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
-import jinwoong.ad_on.schedule.presentation.dto.request.*
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleDTO
+import jinwoong.ad_on.schedule.presentation.dto.request.ScheduleSaveRequest
 import jinwoong.ad_on.schedule.presentation.dto.request.v1.CampaignDTO
 import jinwoong.ad_on.schedule.presentation.dto.request.v1.ScheduleUpdateRequest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,14 +18,18 @@ import java.time.LocalTime
 class ScheduleServiceTest {
     private val scheduleRepository: ScheduleRepository = mock()
     private val spentBudgetLongRedisTemplate: RedisTemplate<String, Long> = mock()
-    private val valueOps: ValueOperations<String, SpentBudgets> = mock()
     private val scheduleSyncService: ScheduleSyncService = mock()
+    private val valueOps: ValueOperations<String, Long> = mock()
 
     private lateinit var scheduleService: ScheduleService
 
     @BeforeEach
     fun setUp() {
         scheduleService = ScheduleService(scheduleRepository, scheduleSyncService, spentBudgetLongRedisTemplate)
+        scheduleService.scheduleServiceProxy = scheduleService
+
+        // RedisTemplate.opsForValue() mocking
+        whenever(spentBudgetLongRedisTemplate.opsForValue()).thenReturn(valueOps)
     }
 
     @Test
@@ -41,7 +45,10 @@ class ScheduleServiceTest {
 
         // then
         assertEquals(listOf(99L), response.savedIds)
-        verify(valueOps).set(eq("spentBudgets:schedule:99"), any()) // verify: 1번 호출
+
+        // Redis set 호출 확인 (verify: 1번 호출)
+        verify(valueOps).set(eq("spentTotalBudget_v1:schedule:99"), any())
+        verify(valueOps).set(eq("spentDailyBudget_v1:schedule:99"), any())
     }
 
     @Test
@@ -69,6 +76,8 @@ class ScheduleServiceTest {
         assertEquals(2000L, updatedSchedule.campaign.totalBudget)
         verify(scheduleSyncService).syncCandidatesInRedis(any())
     }
+
+    /** Helper Methods **/
 
     private fun createSavedSchedule(id: Long): Schedule =
         Schedule(

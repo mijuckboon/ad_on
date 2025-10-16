@@ -22,29 +22,32 @@ import kotlin.test.assertNotNull
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AdServeServiceTest {
 
-    @Mock
-    lateinit var scheduleSyncService: ScheduleSyncService
-    @Mock
-    lateinit var spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
-    @Mock
-    lateinit var scheduleRepository: ScheduleRepository
-    @Mock
-    lateinit var valueOperations: ValueOperations<String, SpentBudgets>
-    @Mock
-    lateinit var budgetService: BudgetService
+    @Mock lateinit var scheduleSyncService: ScheduleSyncService
+    @Mock lateinit var spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
+    @Mock lateinit var spentBudgetLongRedisTemplate: RedisTemplate<String, Long>
+    @Mock lateinit var valueOperations: ValueOperations<String, SpentBudgets>
+    @Mock lateinit var scheduleService: ScheduleService
 
+    private lateinit var budgetService: BudgetService
     private lateinit var adServeService: AdServeService
 
     @BeforeEach
     fun setup() {
         whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(valueOperations)
+        budgetService = BudgetService(
+            spentBudgetsRedisTemplate = spentBudgetsRedisTemplate,
+            spentBudgetLongRedisTemplate = spentBudgetLongRedisTemplate,
+            scheduleSyncService = scheduleSyncService,
+            scheduleService = scheduleService
+        )
+
         adServeService = AdServeService(
             scheduleSyncService = scheduleSyncService,
             budgetService = budgetService
         )
     }
 
-    /** Schedule 생성 (mock 대신 실제 객체) */
+    /** 실제 도메인 엔티티 생성 */
     private fun createSchedule(id: Long, unitCost: Long = 100L): Schedule {
         val campaign = Campaign(
             id = id,
@@ -95,39 +98,25 @@ class AdServeServiceTest {
     }
 
     @Test
-    fun updateSpentBudgets() {
+    fun updateSpentBudgets_ShouldUpdateRedisValues() {
         // given
-        val schedules = listOf(
-            createSchedule(1L, 100L),
-            createSchedule(2L, 200L)
-        )
-        val initialSpents = listOf(
-            SpentBudgets(1L, 50L, 20L),
-            SpentBudgets(2L, 30L, 10L)
-        )
-        val redisStore = mutableMapOf<String, SpentBudgets>().apply {
-            initialSpents.forEach { this["spentBudgets:schedule:${it.scheduleId}"] = it }
-        }
+        val schedule = createSchedule(1L, 100L)
+        val initialSpent = SpentBudgets(1L, 50L, 20L)
+        val redisStore = mutableMapOf<String, SpentBudgets>()
+        redisStore["spentBudgets:schedule:1"] = initialSpent
 
         mockRedis(redisStore)
-        mockRepositoryForSchedules(schedules)
-        whenever(scheduleSyncService.getFilteredCandidatesFromRedis(any())).thenReturn(schedules)
 
-        // when
-        budgetService.updateBudgetAfterServe(schedules[0], LocalTime.now())
+        // when — 광고 1회 노출로 예산 차감
+        budgetService.updateBudgetAfterServe(schedule, LocalTime.now())
 
         // then
-        schedules.forEachIndexed { index, schedule ->
-            val initial = initialSpents[index]
-            val updated = redisStore["spentBudgets:schedule:${schedule.id}"]!!
-            val expectedTotal = initial.spentTotalBudget + schedule.adSet.unitCost
-            val expectedDaily = initial.spentDailyBudget + schedule.adSet.unitCost
-            assertEquals(expectedTotal, updated.spentTotalBudget, "Schedule ${schedule.id} totalBudget mismatch")
-            assertEquals(expectedDaily, updated.spentDailyBudget, "Schedule ${schedule.id} dailyBudget mismatch")
-        }
+        val updated = redisStore["spentBudgets:schedule:1"]!!
+        assertEquals(150L, updated.spentTotalBudget)
+        assertEquals(120L, updated.spentDailyBudget)
     }
 
-    /** Redis get/set을 map으로 모킹 */
+    /** Redis get/set 모킹 */
     private fun mockRedis(store: MutableMap<String, SpentBudgets>) {
         whenever(valueOperations.get(any())).thenAnswer { store[it.arguments[0]] }
         whenever(valueOperations.set(any(), any())).thenAnswer {
@@ -136,11 +125,5 @@ class AdServeServiceTest {
             store[key] = value
             null
         }
-    }
-
-    /** Repository 모킹 (여러 스케줄 반환) */
-    private fun mockRepositoryForSchedules(schedules: List<Schedule>) {
-        whenever(scheduleRepository.findAllByCampaignId(any())).thenReturn(schedules)
-        whenever(scheduleRepository.findAllByAdSetId(any())).thenReturn(schedules)
     }
 }
