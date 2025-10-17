@@ -43,6 +43,10 @@ class ScheduleSyncServiceTest {
         whenever(scheduleRedisTemplate.opsForValue()).thenReturn(scheduleValueOps)
         whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentValueOps)
 
+        val longValueOps: ValueOperations<String, Long> = mock()
+        whenever(longValueOps.get(any())).thenReturn(null)
+        whenever(spentBudgetLongRedisTemplate.opsForValue()).thenReturn(longValueOps)
+
         scheduleSyncService = ScheduleSyncService(
                 scheduleRedisTemplate,
                 spentBudgetsRedisTemplate,
@@ -72,10 +76,15 @@ class ScheduleSyncServiceTest {
         scheduleSyncService.cacheCandidates(LocalDate.now(), LocalTime.now())
 
         // then
-        verify(scheduleValueOps).set(eq("candidate:schedule:1"), check {
-            assertEquals(50L, it.campaign.spentTotalBudget)
-            assertEquals(5L, it.adSet.spentDailyBudget)
-        })
+        verify(scheduleValueOps).set(
+            eq("candidate:schedule:1"),
+            check {
+                assertEquals(50L, it.campaign.spentTotalBudget)
+                assertEquals(5L, it.adSet.spentDailyBudget)
+            },
+            any<Long>(),        // TTL
+            any()               // TimeUnit
+        )
     }
 
     @Test
