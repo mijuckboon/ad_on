@@ -43,8 +43,8 @@ class AdServeServiceTest {
         whenever(longValueOps.setIfAbsent(any(), any())).thenAnswer { inv ->
             val key = inv.arguments[0] as String
             val value = inv.arguments[1] as Long
-            val prev = longStore.putIfAbsent(key, value)
-            prev == null
+            longStore.putIfAbsent(key, value)
+            longStore[key] == value
         }
 
         whenever(longValueOps.increment(any(), any<Long>())).thenAnswer { inv ->
@@ -54,6 +54,9 @@ class AdServeServiceTest {
             longStore[key] = newVal
             newVal
         }
+
+        whenever(scheduleService.getSchedulesToUpdate(any())).thenReturn(emptyList())
+        whenever(scheduleSyncService.getFilteredCandidatesFromRedis(any())).thenReturn(emptyList())
 
         budgetService = BudgetService(
             spentBudgetsRedisTemplate = spentBudgetsRedisTemplate,
@@ -122,6 +125,7 @@ class AdServeServiceTest {
     fun updateSpentBudgets_ShouldUpdateRedisValues() {
         // given
         val schedule = createSchedule(1L, 100L)
+        whenever(scheduleService.getSchedulesToUpdate(any())).thenReturn(listOf(schedule))
 
         val totalKey = ScheduleRedisKey.SPENT_TOTAL_BUDGET_V1.key(schedule.id!!)
         val dailyKey = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.key(schedule.id!!)
