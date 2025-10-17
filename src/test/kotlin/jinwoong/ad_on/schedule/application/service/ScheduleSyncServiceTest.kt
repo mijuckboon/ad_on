@@ -136,26 +136,6 @@ class ScheduleSyncServiceTest {
         )
     }
 
-// BudgetService로
-//    @Test
-//    fun resetSpentDailyBudgetsInRedisTest() {
-//        val schedule = createSchedule(6)
-//        val spent = SpentBudgets(6, spentTotalBudget = 100, spentDailyBudget = 50)
-//
-//        whenever(scheduleRedisTemplate.keys("candidate:schedule:*")).thenReturn(setOf("candidate:schedule:6"))
-//        whenever(scheduleValueOps.get("candidate:schedule:6")).thenReturn(schedule)
-//        whenever(spentBudgetsRedisTemplate.keys("spentBudgets:schedule:*")).thenReturn(setOf("spentBudgets:schedule:6"))
-//        whenever(spentValueOps.get("spentBudgets:schedule:6")).thenReturn(spent)
-//
-//        resetSpentDailyBudgetsInRedis()
-//
-//        assertEquals(0L, schedule.adSet.spentDailyBudget)
-//        verify(scheduleValueOps).set(eq("candidate:schedule:6"), eq(schedule))
-//        verify(spentValueOps).set(eq("spentBudgets:schedule:6"), check {
-//            assertEquals(0L, it.spentDailyBudget)
-//        })
-//    }
-
     private fun createSchedule(id: Long, totalBudget: Long = 1000L, dailyBudget: Long = 100L): Schedule {
         val campaign = Campaign(
             id = id,
