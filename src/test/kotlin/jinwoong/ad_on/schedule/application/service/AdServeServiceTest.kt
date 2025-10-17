@@ -1,15 +1,16 @@
 package jinwoong.ad_on.schedule.application.service
 
 import jinwoong.ad_on.schedule.domain.aggregate.*
-import jinwoong.ad_on.schedule.domain.repository.ScheduleRepository
 import jinwoong.ad_on.schedule.infrastructure.redis.SpentBudgets
+import jinwoong.ad_on.schedule.infrastructure.redis.ScheduleRedisKey
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.junit.jupiter.MockitoSettings
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import org.mockito.quality.Strictness
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -25,15 +26,35 @@ class AdServeServiceTest {
     @Mock lateinit var scheduleSyncService: ScheduleSyncService
     @Mock lateinit var spentBudgetsRedisTemplate: RedisTemplate<String, SpentBudgets>
     @Mock lateinit var spentBudgetLongRedisTemplate: RedisTemplate<String, Long>
-    @Mock lateinit var valueOperations: ValueOperations<String, SpentBudgets>
+    @Mock lateinit var spentBudgetsValueOps: ValueOperations<String, SpentBudgets>
+    @Mock lateinit var longValueOps: ValueOperations<String, Long>
     @Mock lateinit var scheduleService: ScheduleService
 
     private lateinit var budgetService: BudgetService
     private lateinit var adServeService: AdServeService
 
+    private val longStore = mutableMapOf<String, Long>()
+
     @BeforeEach
     fun setup() {
-        whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(valueOperations)
+        whenever(spentBudgetsRedisTemplate.opsForValue()).thenReturn(spentBudgetsValueOps)
+        whenever(spentBudgetLongRedisTemplate.opsForValue()).thenReturn(longValueOps)
+
+        whenever(longValueOps.setIfAbsent(any(), any())).thenAnswer { inv ->
+            val key = inv.arguments[0] as String
+            val value = inv.arguments[1] as Long
+            val prev = longStore.putIfAbsent(key, value)
+            prev == null
+        }
+
+        whenever(longValueOps.increment(any(), any<Long>())).thenAnswer { inv ->
+            val key = inv.arguments[0] as String
+            val delta = inv.arguments[1] as Long
+            val newVal = (longStore[key] ?: 0L) + delta
+            longStore[key] = newVal
+            newVal
+        }
+
         budgetService = BudgetService(
             spentBudgetsRedisTemplate = spentBudgetsRedisTemplate,
             spentBudgetLongRedisTemplate = spentBudgetLongRedisTemplate,
@@ -101,29 +122,16 @@ class AdServeServiceTest {
     fun updateSpentBudgets_ShouldUpdateRedisValues() {
         // given
         val schedule = createSchedule(1L, 100L)
-        val initialSpent = SpentBudgets(1L, 50L, 20L)
-        val redisStore = mutableMapOf<String, SpentBudgets>()
-        redisStore["spentBudgets:schedule:1"] = initialSpent
 
-        mockRedis(redisStore)
+        val totalKey = ScheduleRedisKey.SPENT_TOTAL_BUDGET_V1.key(schedule.id!!)
+        val dailyKey = ScheduleRedisKey.SPENT_DAILY_BUDGET_V1.key(schedule.id!!)
+        longStore[totalKey] = 50L
+        longStore[dailyKey] = 20L
 
-        // when — 광고 1회 노출로 예산 차감
         budgetService.updateBudgetAfterServe(schedule, LocalTime.now())
 
         // then
-        val updated = redisStore["spentBudgets:schedule:1"]!!
-        assertEquals(150L, updated.spentTotalBudget)
-        assertEquals(120L, updated.spentDailyBudget)
-    }
-
-    /** Redis get/set 모킹 */
-    private fun mockRedis(store: MutableMap<String, SpentBudgets>) {
-        whenever(valueOperations.get(any())).thenAnswer { store[it.arguments[0]] }
-        whenever(valueOperations.set(any(), any())).thenAnswer {
-            val key = it.arguments[0] as String
-            val value = it.arguments[1] as SpentBudgets
-            store[key] = value
-            null
-        }
+        assertEquals(150L, longStore[totalKey])
+        assertEquals(120L, longStore[dailyKey])
     }
 }
